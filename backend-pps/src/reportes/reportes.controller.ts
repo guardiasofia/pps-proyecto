@@ -1,0 +1,18 @@
+import { Controller, Get, Param, Res, UseGuards } from '@nestjs/common';
+import type { Response } from 'express';
+import { JwtAuthGuard } from '../common/guards/jwt-auth.guard.js';
+import { ReportesService } from './reportes.service.js';
+
+@Controller('reportes')
+@UseGuards(JwtAuthGuard)
+export class ReportesController {
+  constructor(private readonly reportesService: ReportesService) {}
+
+  @Get('empleado/:id')
+  generarReporteEmpleado(@Param('id') id: string, @Res() res: Response) {
+    const pdf = this.reportesService.generarReporteEmpleado(id);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="reporte-${id}.pdf"`);
+    return res.send(pdf);
+  }
+}
