@@ -1,9 +1,9 @@
 import {
   CanActivate,
   ExecutionContext,
+  ForbiddenException,
   Injectable,
   SetMetadata,
-  UnauthorizedException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 
@@ -25,9 +25,9 @@ export class RolesGuard implements CanActivate {
     }
 
     const { user } = context.switchToHttp().getRequest();
-    const userRoles = Array.isArray(user?.roles)
-      ? user.roles
-      : [user?.rol ?? user?.role ?? user?.roles].filter(Boolean);
+    const userRoles = [user?.roles, user?.rol, user?.role]
+      .flatMap((role) => (Array.isArray(role) ? role : [role]))
+      .filter(Boolean);
 
     const hasRole = requiredRoles.some((role) =>
       userRoles.some(
@@ -36,7 +36,7 @@ export class RolesGuard implements CanActivate {
     );
 
     if (!hasRole) {
-      throw new UnauthorizedException('No tienes permisos para esta acción');
+      throw new ForbiddenException('No tienes permisos para esta acción');
     }
 
     return true;

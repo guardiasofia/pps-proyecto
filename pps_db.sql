@@ -250,6 +250,7 @@ CREATE TABLE public.usuarios (
     idrol integer,
     estado public.estado_enum,
     email character varying(255),
+    password_hash character varying(255),
     fechamod timestamp without time zone,
     usuariomod integer
 );

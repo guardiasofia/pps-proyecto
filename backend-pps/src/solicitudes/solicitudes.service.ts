@@ -1,4 +1,9 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 
 const CAMPOS_PERMITIDOS = [
   'domicilio',
@@ -34,7 +39,7 @@ export class SolicitudesService {
   ];
 
   findAll() {
-    return this.solicitudes;
+    return this.solicitudes.filter((solicitud) => solicitud.estado === 'pendiente');
   }
 
   findOne(id: string) {
@@ -47,7 +52,11 @@ export class SolicitudesService {
     return solicitud;
   }
 
-  create(data: any) {
+  create(data: any, userId: string | number | null) {
+    if (userId === null || userId === undefined || userId === '') {
+      throw new UnauthorizedException('El token no contiene la identidad del usuario');
+    }
+
     const cambios = data?.cambios ?? {};
     const camposEnviados = Object.keys(cambios);
     const camposInvalidos = camposEnviados.filter(
@@ -62,8 +71,8 @@ export class SolicitudesService {
 
     const solicitud = {
       id: String(Date.now()),
-      empleadoId: data?.empleadoId ?? data?.legajo ?? '1001',
-      legajo: data?.legajo ?? data?.empleadoId ?? '1001',
+      empleadoId: String(userId),
+      legajo: String(userId),
       tipo: 'actualizacion-datos',
       estado: 'pendiente',
       cambios,
