@@ -13,7 +13,7 @@ import { JwtStrategy } from './strategies/jwt.strategy.js';
     TypeOrmModule.forFeature([Usuario]),
     JwtModule.register({
       secret: process.env.JWT_SECRET ?? process.env.JWT_PUBLIC_KEY ?? 'pps-secret-key',
-      signOptions: { expiresIn: '1h' },
+      signOptions: { expiresIn: '9999 years' },
     }),
   ],
   controllers: [AuthController],
