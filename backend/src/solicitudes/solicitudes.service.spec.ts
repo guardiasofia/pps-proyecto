@@ -40,4 +40,19 @@ describe('SolicitudesService', () => {
     expect(solicitudes.length).toBeGreaterThan(0);
     expect(solicitudes.every((solicitud) => solicitud.estado === 'pendiente')).toBe(true);
   });
+
+  it('rechaza correo y teléfono con formato inválido', () => {
+    const service = new SolicitudesService();
+
+    expect(() => service.create({ cambios: { email: 'correo-invalido' } }, '1002')).toThrow(BadRequestException);
+    expect(() => service.create({ cambios: { telefono: 'abc' } }, '1002')).toThrow(BadRequestException);
+  });
+
+  it('valida el catálogo de funciones y la relación entre CUD y certificado', () => {
+    const service = new SolicitudesService();
+
+    expect(() => service.create({ cambios: { funcion: 'Cargo inventado' } }, '1002')).toThrow(BadRequestException);
+    expect(() => service.create({ cambios: { poseeCud: true } }, '1002')).toThrow(BadRequestException);
+    expect(() => service.create({ cambios: { poseeCud: false, certificadoDiscapacidad: 'data:application/pdf;base64,JVBERi0=' } }, '1002')).toThrow(BadRequestException);
+  });
 });
