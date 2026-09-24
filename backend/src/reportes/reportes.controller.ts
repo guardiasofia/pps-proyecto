@@ -10,6 +10,8 @@ export class ReportesController {
   constructor(private readonly reportesService: ReportesService) {}
 
   @Get('empleado/:id')
+  @UseGuards(RolesGuard)
+  @Roles('RRHH')
   generarReporteEmpleado(@Param('id') id: string, @Res() res: Response) {
     const pdf = this.reportesService.generarReporteEmpleado(id);
     res.setHeader('Content-Type', 'application/pdf');

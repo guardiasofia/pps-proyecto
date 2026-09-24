@@ -73,6 +73,10 @@ export class FamiliarDto {
     message: 'El teléfono del familiar no tiene un formato válido',
   })
   telefono?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  discapacitado?: boolean;
 }
 
 export class SolicitudDatosDto {

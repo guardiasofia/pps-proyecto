@@ -1,10 +1,10 @@
 --
 -- PostgreSQL database dump
---
+-- TOC entry 3494 (class 0 OID 16487)
+-- Dependencies: 214
+-- Data for Name: roles; Type: TABLE DATA; Schema: public; Owner: pps_user
 
-\restrict na4QPKK6h2UPSbPdYmO4Yda7wXf6eD1PgapUgeXQCMcuHr4gpftBCMNWdniVhAb
-
--- Dumped from database version 15.18 (Debian 15.18-1.pgdg13+1)
+1\trrhh
 -- Dumped by pg_dump version 18.3
 
 -- Started on 2026-09-09 01:37:50
@@ -101,17 +101,14 @@ CREATE TABLE public.emp_cud (
 ALTER TABLE public.emp_cud OWNER TO pps_user;
 
 --
--- TOC entry 224 (class 1259 OID 16580)
--- Name: empestudios; Type: TABLE; Schema: public; Owner: pps_user
---
 
 CREATE TABLE public.empestudios (
     legajo integer NOT NULL,
     codestudio character varying(50) NOT NULL,
     titulo character varying(255),
-    f_graduado date,
-    institucion character varying(255),
-    ciudad character varying(255),
+COPY public.roles (idrol, descripcion) FROM stdin;
+1\trrhh
+2\templeado
     estado public.estado_enum,
     fechamod timestamp without time zone,
     usuariomod integer
@@ -387,14 +384,8 @@ COPY public.reparticiones (idreparticion, nombre, estado, fechamod, usuariomod) 
 \.
 
 
---
--- TOC entry 3494 (class 0 OID 16487)
--- Dependencies: 214
--- Data for Name: roles; Type: TABLE DATA; Schema: public; Owner: pps_user
---
-
 COPY public.roles (idrol, descripcion) FROM stdin;
-1	admin
+1	rrhh
 2	empleado
 \.
 

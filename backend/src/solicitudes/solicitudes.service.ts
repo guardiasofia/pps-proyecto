@@ -230,17 +230,31 @@ export class SolicitudesService {
   private async persistirArchivosSiCorresponde(solicitud: any) {
     const foto = solicitud.cambios?.foto;
     const certificado = solicitud.cambios?.certificadoDiscapacidad;
-    if (!foto && !certificado) return;
-    if (!this.archivoRepository || !this.empleadoRepository) {
+    const poseeCud = solicitud.cambios?.poseeCud;
+    if (!foto && !certificado && poseeCud !== false) return;
+    if ((foto || certificado) && (!this.archivoRepository || !this.empleadoRepository)) {
       throw new BadRequestException('La persistencia de archivos no está disponible');
     }
 
+    if (poseeCud === false) {
+      if (!this.empCudRepository) throw new BadRequestException('La persistencia de CUD no está disponible');
+      const cud = await this.empCudRepository.findOne({ where: { legajo: Number(solicitud.legajo), estado: 'AC' } });
+      if (cud) {
+        cud.estado = 'BA';
+        cud.fechaMod = new Date();
+        cud.usuarioMod = Number(solicitud.aprobadoPor) || undefined;
+        await this.empCudRepository.save(cud);
+      }
+    }
+
     if (foto) {
+      const empleadoRepository = this.empleadoRepository;
+      if (!empleadoRepository) throw new BadRequestException('La persistencia de empleados no está disponible');
       const archivo = await this.guardarArchivo(foto, `foto-empleado-${solicitud.legajo}`);
-      const empleado = await this.empleadoRepository.findOne({ where: { legajo: Number(solicitud.legajo) } });
+      const empleado = await empleadoRepository.findOne({ where: { legajo: Number(solicitud.legajo) } });
       if (!empleado) throw new NotFoundException(`Empleado con legajo ${solicitud.legajo} no encontrado`);
       empleado.idarchivofoto = archivo.idArchivo;
-      await this.empleadoRepository.save(empleado);
+      await empleadoRepository.save(empleado);
     }
 
     if (certificado) {

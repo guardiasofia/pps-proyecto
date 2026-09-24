@@ -35,7 +35,6 @@ export class AppComponent implements OnInit {
   apiError = '';
   approvalError = '';
   approvingId: number | string | null = null;
-  reportEmployeeId: number | null = null;
   reportRequestId: number | string | null = null;
   reportError = '';
   reportLoading = false;
@@ -64,6 +63,9 @@ export class AppComponent implements OnInit {
     'Guía Turístico', 'Inspector', 'Profesional de la Salud', 'Docente', 'Profesional Informático',
     'Profesional en general', 'Técnico en general', 'Personal de Seguridad', 'Cajero', 'Juez',
     'Fiscal', 'Concejal',
+  ];
+  readonly vinculosFamiliares = [
+    'Cónyuge', 'Hijo/a', 'Padre/Madre', 'Hermano/a', 'Abuelo/a', 'Nieto/a', 'Otro familiar',
   ];
 
   ngOnInit() {
@@ -156,6 +158,45 @@ export class AppComponent implements OnInit {
     return this.employees.filter((employee) =>
       `${employee.nombre} ${employee.apellido} ${employee.reparticion}`.toLowerCase().includes(term)
     );
+  }
+
+  get personalDistribution() {
+    const total = this.employees.length;
+    const groups = new Map<string, number>();
+    this.employees.forEach((employee) => {
+      const area = employee.reparticion || 'Sin repartición';
+      groups.set(area, (groups.get(area) ?? 0) + 1);
+    });
+    return [...groups.entries()].sort(([, countA], [, countB]) => countB - countA).slice(0, 3).map(([name, count], index) => ({
+      name,
+      percentage: total ? Math.round(count * 100 / total) : 0,
+      color: ['blue', 'amber', 'green'][index],
+    }));
+  }
+
+  getRequestChangeEntries(request: Solicitud) {
+    const labels: Record<string, string> = {
+      domicilio: 'Domicilio', telefono: 'Teléfono personal', telefonos: 'Teléfonos adicionales',
+      email: 'Correo electrónico', correoElectronico: 'Correo electrónico', reparticion: 'Repartición',
+      estadoCivil: 'Estado civil', familiares: 'Familiares', foto: 'Foto', funcion: 'Función',
+      poseeCud: 'CUD', certificadoDiscapacidad: 'Certificado de discapacidad',
+    };
+    return Object.entries(request.cambios ?? {}).map(([field, value]) => ({
+      label: labels[field] ?? field,
+      value: this.formatRequestChange(field, value),
+    }));
+  }
+
+  private formatRequestChange(field: string, value: unknown) {
+    if (field === 'foto' || field === 'certificadoDiscapacidad') return 'Archivo adjunto';
+    if (field === 'poseeCud') return value === true ? 'Sí' : 'No';
+    if (field === 'familiares' && Array.isArray(value)) {
+      return value.map((family) => {
+        const item = family as Record<string, unknown>;
+        return `${item['nombre'] ?? ''} (${item['vinculo'] ?? ''})`;
+      }).join(', ');
+    }
+    return Array.isArray(value) ? value.join(', ') : String(value);
   }
 
   setSection(section: string) {
@@ -294,17 +335,12 @@ export class AppComponent implements OnInit {
     return /^[+]?[(]?\d[\d\s().-]{6,18}\d$/.test(value.trim());
   }
 
-  downloadEmployeeReport() {
-    if (this.reportEmployeeId === null) return;
-    this.downloadBlob(this.municipalService.descargarReporteEmpleado(this.reportEmployeeId), `reporte-empleado-${this.reportEmployeeId}.pdf`);
-  }
-
   downloadRequestReport() {
     if (this.reportRequestId === null || !this.isRrhh) return;
     this.downloadBlob(this.municipalService.descargarReporteSolicitud(this.reportRequestId), `solicitud-${this.reportRequestId}.pdf`);
   }
 
-  private downloadBlob(request: ReturnType<MunicipalService['descargarReporteEmpleado']>, filename: string) {
+  private downloadBlob(request: ReturnType<MunicipalService['descargarReporteSolicitud']>, filename: string) {
     this.reportLoading = true;
     this.reportError = '';
     request.subscribe({

@@ -18,6 +18,7 @@ export interface Solicitud {
   estado: string;
   fecha?: string;
   solicitante?: string;
+  cambios?: Record<string, unknown>;
 }
 
 export interface Familiar {
@@ -73,6 +74,7 @@ export class MunicipalService {
         estado: request.estado,
         fecha: request.creadoEn ? new Date(request.creadoEn).toLocaleDateString('es-AR') : undefined,
         solicitante: request.legajo ? `Legajo ${request.legajo}` : undefined,
+        cambios: request.cambios,
       })))
     );
   }
@@ -91,10 +93,6 @@ export class MunicipalService {
       aprobadoPor: 'rrhh-admin',
       observacion,
     });
-  }
-
-  descargarReporteEmpleado(id: number) {
-    return this.http.get(`${this.apiUrl}/reportes/empleado/${id}`, { responseType: 'blob' });
   }
 
   descargarReporteSolicitud(id: number | string) {
@@ -142,6 +140,7 @@ interface BackendSolicitud {
   estado: string;
   creadoEn?: string;
   legajo?: string;
+  cambios?: Record<string, unknown>;
 }
 
 interface BackendFichaEmpleado {
