@@ -1,52 +1,64 @@
+<<<<<<< README.md
+
+=======
 # 📚 Sistema de Autogestión de Datos - PPS
 
 Proyecto de **Práctica Profesional Supervisada** de la Licenciatura en Sistemas (UNER).  
 El objetivo es desarrollar un sistema web para la **Municipalidad de Concordia** que permita la autogestión de actualización de datos de empleados, con validación y aprobación por parte de Recursos Humanos.
 
----
-## 👥 Desarrolladora
-- **Sofía Guardia** (@guardiasofia)  
 
-## 🎯 Objetivos
-- Implementar un sistema modular con **NestJS (backend)** y **Angular (frontend)**.  
-- Gestionar datos de empleados en **PostgreSQL**.  
-- Incorporar autenticación y autorización mediante **JWT**.  
-- Permitir carga y aprobación de solicitudes de actualización de datos.  
-- Generar reportes en formato PDF.
+Portal Angular y API NestJS para solicitudes de actualización de legajos, aprobación de RRHH e integración con PostgreSQL.
 
----
+## Requisitos
 
-## 🚀 Tecnologías utilizadas
-- **Backend:** NestJS (Node.js, TypeScript)  
-- **Frontend:** Angular  
-- **Base de datos:** PostgreSQL  
-- **Contenedores:** Docker + docker-compose  
-- **Administración:** pgAdmin  
+- Node.js 22+ y npm.
+- Docker Desktop con Docker Compose, o PostgreSQL 15.
+- Proveedor de identidad externo que emita JWT firmados con `exp`.
 
----
+## Iniciar
 
-## 📂 Estructura del proyecto
-- `frontend/` → Interfaces y componentes visuales  
-- `backend/` → Lógica de negocio y API REST  
-- `pps_db.sql` → Script de roles, permisos y solicitudes  
-- `docker-compose.yml` → Configuración de servicios y contenedores  
+Desde la raíz, crear la base local:
 
-## ⚙️ Instalación y ejecución
-1. Clonar el repositorio:
-   ```bash
-   git clone https://gitlab.com/guardiasofia/pps-proyecto.git
+```powershell
+docker compose up -d postgres pgadmin
+```
 
-2. Instalar dependencias en cada módulo:
-   ```bash
-    cd backend && npm install
-    cd ../frontend && npm install
+En un volumen nuevo, PostgreSQL ejecuta `pps_db.sql` y luego las migraciones de `backend/migrations`. Los init scripts no se vuelven a ejecutar sobre un volumen existente; respaldá datos y aplica las migraciones en orden para actualizar una base existente.
 
-3. Levantar los servicios con Docker:
-   ```bash
-    docker-compose up
+Configurar `backend/.env` usando `backend/.env.example` como referencia. En local, `DB_PASSWORD` debe coincidir con Compose (`change-me-local` por defecto). Se requiere `JWT_PUBLIC_KEY` (recomendado para RS256) o `JWT_SECRET` si el emisor usa HS256. No hay usuarios de prueba ni login/contraseñas locales; pedí un token al proveedor de identidad municipal. Cambiar todas las claves de desarrollo antes de cualquier uso compartido o productivo.
 
-4. Acceder a la aplicación en http://localhost:3000
+Arrancar API y portal en terminales separadas:
 
-## 📜 Licencia
-- Este proyecto es de uso académico y no posee licencia comercial.
+```powershell
+cd backend
+npm ci
+npm run start:dev
+```
 
+```powershell
+cd frontend
+npm ci
+npm start
+```
+
+El portal se sirve en `http://localhost:4200`; su proxy de desarrollo reenvía `/api` a `http://localhost:3000`. La API tiene `GET /api/health`. pgAdmin queda en `http://localhost:8080`, con credenciales locales configurables mediante `PGADMIN_DEFAULT_EMAIL` y `PGADMIN_DEFAULT_PASSWORD`. Los puertos de PostgreSQL y pgAdmin se enlazan a loopback.
+
+## Seguridad
+
+La API valida JWT con Passport, exige `exp` y limita la antigüedad máxima (`JWT_MAX_AGE`, una hora por defecto). CORS usa `CORS_ORIGINS`; la producción debe definirlo explícitamente. El token se mantiene en memoria durante la pestaña. Los archivos se limitan a 5 MiB y se comprueba su firma de formato antes de guardarlos en `bytea`; para volúmenes productivos, migrar a almacenamiento de objetos. El frontend es un shell de una sola pantalla, con guardas de autorización efectivas en la API; responsive no está verificado mediante pruebas visuales automatizadas.
+
+## Verificar
+
+```powershell
+cd backend
+npm test -- --testTimeout=15000
+npm run test:e2e
+npm run build
+```
+
+```powershell
+cd frontend
+npm run build
+```
+
+>>>>>>> README.md
