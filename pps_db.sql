@@ -1,18 +1,16 @@
 --
 -- PostgreSQL database dump
--- TOC entry 3494 (class 0 OID 16487)
--- Dependencies: 214
--- Data for Name: roles; Type: TABLE DATA; Schema: public; Owner: pps_user
+--
 
-1\trrhh
+
+-- Dumped from database version 15.18 (Debian 15.18-1.pgdg13+1)
 -- Dumped by pg_dump version 18.3
 
--- Started on 2026-09-09 01:37:50
+-- Started on 2026-10-22 19:26:02
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
 SET idle_in_transaction_session_timeout = 0;
-SET transaction_timeout = 0;
 SET client_encoding = 'UTF8';
 SET standard_conforming_strings = on;
 SELECT pg_catalog.set_config('search_path', '', false);
@@ -22,7 +20,24 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 --
--- TOC entry 849 (class 1247 OID 16482)
+-- TOC entry 2 (class 3079 OID 16629)
+-- Name: pgcrypto; Type: EXTENSION; Schema: -; Owner: -
+--
+
+CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public;
+
+
+--
+-- TOC entry 3549 (class 0 OID 0)
+-- Dependencies: 2
+-- Name: EXTENSION pgcrypto; Type: COMMENT; Schema: -; Owner: 
+--
+
+COMMENT ON EXTENSION pgcrypto IS 'cryptographic functions';
+
+
+--
+-- TOC entry 886 (class 1247 OID 16482)
 -- Name: estado_enum; Type: TYPE; Schema: public; Owner: pps_user
 --
 
@@ -39,7 +54,7 @@ SET default_tablespace = '';
 SET default_table_access_method = heap;
 
 --
--- TOC entry 217 (class 1259 OID 16502)
+-- TOC entry 218 (class 1259 OID 16502)
 -- Name: archivos; Type: TABLE; Schema: public; Owner: pps_user
 --
 
@@ -58,7 +73,7 @@ CREATE TABLE public.archivos (
 ALTER TABLE public.archivos OWNER TO pps_user;
 
 --
--- TOC entry 223 (class 1259 OID 16568)
+-- TOC entry 224 (class 1259 OID 16568)
 -- Name: direcciones; Type: TABLE; Schema: public; Owner: pps_user
 --
 
@@ -82,7 +97,7 @@ CREATE TABLE public.direcciones (
 ALTER TABLE public.direcciones OWNER TO pps_user;
 
 --
--- TOC entry 226 (class 1259 OID 16614)
+-- TOC entry 227 (class 1259 OID 16614)
 -- Name: emp_cud; Type: TABLE; Schema: public; Owner: pps_user
 --
 
@@ -101,14 +116,17 @@ CREATE TABLE public.emp_cud (
 ALTER TABLE public.emp_cud OWNER TO pps_user;
 
 --
+-- TOC entry 225 (class 1259 OID 16580)
+-- Name: empestudios; Type: TABLE; Schema: public; Owner: pps_user
+--
 
 CREATE TABLE public.empestudios (
     legajo integer NOT NULL,
     codestudio character varying(50) NOT NULL,
     titulo character varying(255),
-COPY public.roles (idrol, descripcion) FROM stdin;
-1\trrhh
-2\templeado
+    f_graduado date,
+    institucion character varying(255),
+    ciudad character varying(255),
     estado public.estado_enum,
     fechamod timestamp without time zone,
     usuariomod integer
@@ -118,7 +136,7 @@ COPY public.roles (idrol, descripcion) FROM stdin;
 ALTER TABLE public.empestudios OWNER TO pps_user;
 
 --
--- TOC entry 221 (class 1259 OID 16531)
+-- TOC entry 222 (class 1259 OID 16531)
 -- Name: empleados; Type: TABLE; Schema: public; Owner: pps_user
 --
 
@@ -143,7 +161,7 @@ CREATE TABLE public.empleados (
 ALTER TABLE public.empleados OWNER TO pps_user;
 
 --
--- TOC entry 218 (class 1259 OID 16509)
+-- TOC entry 219 (class 1259 OID 16509)
 -- Name: estudios; Type: TABLE; Schema: public; Owner: pps_user
 --
 
@@ -158,7 +176,7 @@ CREATE TABLE public.estudios (
 ALTER TABLE public.estudios OWNER TO pps_user;
 
 --
--- TOC entry 225 (class 1259 OID 16597)
+-- TOC entry 226 (class 1259 OID 16597)
 -- Name: familiares; Type: TABLE; Schema: public; Owner: pps_user
 --
 
@@ -178,7 +196,7 @@ CREATE TABLE public.familiares (
 ALTER TABLE public.familiares OWNER TO pps_user;
 
 --
--- TOC entry 215 (class 1259 OID 16492)
+-- TOC entry 216 (class 1259 OID 16492)
 -- Name: funciones; Type: TABLE; Schema: public; Owner: pps_user
 --
 
@@ -193,7 +211,7 @@ CREATE TABLE public.funciones (
 ALTER TABLE public.funciones OWNER TO pps_user;
 
 --
--- TOC entry 219 (class 1259 OID 16514)
+-- TOC entry 220 (class 1259 OID 16514)
 -- Name: parentesco; Type: TABLE; Schema: public; Owner: pps_user
 --
 
@@ -207,7 +225,7 @@ CREATE TABLE public.parentesco (
 ALTER TABLE public.parentesco OWNER TO pps_user;
 
 --
--- TOC entry 216 (class 1259 OID 16497)
+-- TOC entry 217 (class 1259 OID 16497)
 -- Name: reparticiones; Type: TABLE; Schema: public; Owner: pps_user
 --
 
@@ -223,7 +241,7 @@ CREATE TABLE public.reparticiones (
 ALTER TABLE public.reparticiones OWNER TO pps_user;
 
 --
--- TOC entry 214 (class 1259 OID 16487)
+-- TOC entry 215 (class 1259 OID 16487)
 -- Name: roles; Type: TABLE; Schema: public; Owner: pps_user
 --
 
@@ -236,7 +254,7 @@ CREATE TABLE public.roles (
 ALTER TABLE public.roles OWNER TO pps_user;
 
 --
--- TOC entry 220 (class 1259 OID 16519)
+-- TOC entry 221 (class 1259 OID 16519)
 -- Name: usuarios; Type: TABLE; Schema: public; Owner: pps_user
 --
 
@@ -247,7 +265,6 @@ CREATE TABLE public.usuarios (
     idrol integer,
     estado public.estado_enum,
     email character varying(255),
-    password_hash character varying(255),
     fechamod timestamp without time zone,
     usuariomod integer
 );
@@ -256,7 +273,7 @@ CREATE TABLE public.usuarios (
 ALTER TABLE public.usuarios OWNER TO pps_user;
 
 --
--- TOC entry 222 (class 1259 OID 16553)
+-- TOC entry 223 (class 1259 OID 16553)
 -- Name: usuarioslegajos; Type: TABLE; Schema: public; Owner: pps_user
 --
 
@@ -273,8 +290,8 @@ CREATE TABLE public.usuarioslegajos (
 ALTER TABLE public.usuarioslegajos OWNER TO pps_user;
 
 --
--- TOC entry 3497 (class 0 OID 16502)
--- Dependencies: 217
+-- TOC entry 3534 (class 0 OID 16502)
+-- Dependencies: 218
 -- Data for Name: archivos; Type: TABLE DATA; Schema: public; Owner: pps_user
 --
 
@@ -283,8 +300,8 @@ COPY public.archivos (idarchivo, contenido, tipoarchivo, nombrearchivo, fechacar
 
 
 --
--- TOC entry 3503 (class 0 OID 16568)
--- Dependencies: 223
+-- TOC entry 3540 (class 0 OID 16568)
+-- Dependencies: 224
 -- Data for Name: direcciones; Type: TABLE DATA; Schema: public; Owner: pps_user
 --
 
@@ -294,8 +311,8 @@ COPY public.direcciones (legajo, calle, callenro, barrio, ciudad, provincia, tel
 
 
 --
--- TOC entry 3506 (class 0 OID 16614)
--- Dependencies: 226
+-- TOC entry 3543 (class 0 OID 16614)
+-- Dependencies: 227
 -- Data for Name: emp_cud; Type: TABLE DATA; Schema: public; Owner: pps_user
 --
 
@@ -304,42 +321,47 @@ COPY public.emp_cud (idcud, legajo, fechaemision, fechavencimiento, idarchivo, e
 
 
 --
--- TOC entry 3504 (class 0 OID 16580)
--- Dependencies: 224
+-- TOC entry 3541 (class 0 OID 16580)
+-- Dependencies: 225
 -- Data for Name: empestudios; Type: TABLE DATA; Schema: public; Owner: pps_user
 --
 
 COPY public.empestudios (legajo, codestudio, titulo, f_graduado, institucion, ciudad, estado, fechamod, usuariomod) FROM stdin;
 1001	UNI	Licenciatura en Sistemas	2015-12-15	UNC	Córdoba	AC	2026-09-07 23:45:20.340662	1
+1001	SEC_COMP	Bachiller	2003-12-10	Escuela Normal	Concordia	AC	2026-09-10 03:16:12.157185	1
 \.
 
 
 --
--- TOC entry 3501 (class 0 OID 16531)
--- Dependencies: 221
+-- TOC entry 3538 (class 0 OID 16531)
+-- Dependencies: 222
 -- Data for Name: empleados; Type: TABLE DATA; Schema: public; Owner: pps_user
 --
 
 COPY public.empleados (legajo, apellido, nombres, nrodocumento, f_nacimiento, nacionalidad, cuil, estadocivil, idfuncion, idreparticion, idarchivofoto, estado, fechamod, usuariomod) FROM stdin;
 1001	Garcia	Ana	30123456	1990-05-14	Argentina	20-30123456-8	Soltera	1	1	\N	AC	2026-09-07 23:45:20.340662	1
+1002	Gómez	Carlos	32123456	\N	Argentina	\N	\N	\N	2	\N	AC	2026-09-14 22:13:31.445558	1
 \.
 
 
 --
--- TOC entry 3498 (class 0 OID 16509)
--- Dependencies: 218
+-- TOC entry 3535 (class 0 OID 16509)
+-- Dependencies: 219
 -- Data for Name: estudios; Type: TABLE DATA; Schema: public; Owner: pps_user
 --
 
 COPY public.estudios (codestudio, estudio, fechamod, usuariomod) FROM stdin;
 UNI	Universitario	2026-09-07 23:45:20.340662	1
 SEC	Secundario	2026-09-07 23:45:20.340662	1
+SEC_COMP	Secundario Completo	2026-09-10 03:14:45.711075	1
+UNI_INC	Universitario Incompleto	2026-09-10 03:14:45.711075	1
+UNI_COMP	Universitario Completo	2026-09-10 03:14:45.711075	1
 \.
 
 
 --
--- TOC entry 3505 (class 0 OID 16597)
--- Dependencies: 225
+-- TOC entry 3542 (class 0 OID 16597)
+-- Dependencies: 226
 -- Data for Name: familiares; Type: TABLE DATA; Schema: public; Owner: pps_user
 --
 
@@ -349,8 +371,8 @@ COPY public.familiares (legajo, numfamiliar, apellido, nombres, parentesco, disc
 
 
 --
--- TOC entry 3495 (class 0 OID 16492)
--- Dependencies: 215
+-- TOC entry 3532 (class 0 OID 16492)
+-- Dependencies: 216
 -- Data for Name: funciones; Type: TABLE DATA; Schema: public; Owner: pps_user
 --
 
@@ -361,20 +383,23 @@ COPY public.funciones (idfuncion, funcion, fechamod, usuariomod) FROM stdin;
 
 
 --
--- TOC entry 3499 (class 0 OID 16514)
--- Dependencies: 219
+-- TOC entry 3536 (class 0 OID 16514)
+-- Dependencies: 220
 -- Data for Name: parentesco; Type: TABLE DATA; Schema: public; Owner: pps_user
 --
 
 COPY public.parentesco (parentesco, fechamod, usuariomod) FROM stdin;
 Madre	2026-09-07 23:45:20.340662	1
 Padre	2026-09-07 23:45:20.340662	1
+Hijo/a	2026-09-10 03:14:51.205634	1
+Cónyuge	2026-09-10 03:14:51.205634	1
+Madre/Padre	2026-09-10 03:14:51.205634	1
 \.
 
 
 --
--- TOC entry 3496 (class 0 OID 16497)
--- Dependencies: 216
+-- TOC entry 3533 (class 0 OID 16497)
+-- Dependencies: 217
 -- Data for Name: reparticiones; Type: TABLE DATA; Schema: public; Owner: pps_user
 --
 
@@ -384,37 +409,46 @@ COPY public.reparticiones (idreparticion, nombre, estado, fechamod, usuariomod) 
 \.
 
 
+--
+-- TOC entry 3531 (class 0 OID 16487)
+-- Dependencies: 215
+-- Data for Name: roles; Type: TABLE DATA; Schema: public; Owner: pps_user
+--
+
 COPY public.roles (idrol, descripcion) FROM stdin;
-1	rrhh
 2	empleado
+1	rrhh
 \.
 
 
 --
--- TOC entry 3500 (class 0 OID 16519)
--- Dependencies: 220
+-- TOC entry 3537 (class 0 OID 16519)
+-- Dependencies: 221
 -- Data for Name: usuarios; Type: TABLE DATA; Schema: public; Owner: pps_user
 --
 
 COPY public.usuarios (usucodigo, usunombre, apenom, idrol, estado, email, fechamod, usuariomod) FROM stdin;
-1	Admin	RRHH	1	AC	admin@pps.com	2026-09-07 23:45:20.340662	1
 2	Ana	Garcia	2	AC	ana@pps.com	2026-09-07 23:45:20.340662	1
+1001	Ana	Pérez	1	AC	ana@pps.com	2026-09-12 15:04:58.37854	1
+1	Admin	RRHH	1	AC	admin@pps.com	2026-09-07 23:45:20.340662	1
+3	Carlos	Gómez	2	AC	empleado@pps.com	2026-09-14 22:13:31.445558	1
 \.
 
 
 --
--- TOC entry 3502 (class 0 OID 16553)
--- Dependencies: 222
+-- TOC entry 3539 (class 0 OID 16553)
+-- Dependencies: 223
 -- Data for Name: usuarioslegajos; Type: TABLE DATA; Schema: public; Owner: pps_user
 --
 
 COPY public.usuarioslegajos (idusuariolegajo, usucodigo, legajo, estado, fechamod, usuariomod) FROM stdin;
 1	2	1001	AC	2026-09-07 23:45:20.340662	1
+2	3	1002	AC	2026-09-14 22:13:31.445558	1
 \.
 
 
 --
--- TOC entry 3320 (class 2606 OID 16508)
+-- TOC entry 3357 (class 2606 OID 16508)
 -- Name: archivos archivos_pkey; Type: CONSTRAINT; Schema: public; Owner: pps_user
 --
 
@@ -423,7 +457,7 @@ ALTER TABLE ONLY public.archivos
 
 
 --
--- TOC entry 3332 (class 2606 OID 16574)
+-- TOC entry 3369 (class 2606 OID 16574)
 -- Name: direcciones direcciones_pkey; Type: CONSTRAINT; Schema: public; Owner: pps_user
 --
 
@@ -432,7 +466,7 @@ ALTER TABLE ONLY public.direcciones
 
 
 --
--- TOC entry 3338 (class 2606 OID 16618)
+-- TOC entry 3375 (class 2606 OID 16618)
 -- Name: emp_cud emp_cud_pkey; Type: CONSTRAINT; Schema: public; Owner: pps_user
 --
 
@@ -441,7 +475,7 @@ ALTER TABLE ONLY public.emp_cud
 
 
 --
--- TOC entry 3334 (class 2606 OID 16586)
+-- TOC entry 3371 (class 2606 OID 16586)
 -- Name: empestudios empestudios_pkey; Type: CONSTRAINT; Schema: public; Owner: pps_user
 --
 
@@ -450,7 +484,7 @@ ALTER TABLE ONLY public.empestudios
 
 
 --
--- TOC entry 3328 (class 2606 OID 16537)
+-- TOC entry 3365 (class 2606 OID 16537)
 -- Name: empleados empleados_pkey; Type: CONSTRAINT; Schema: public; Owner: pps_user
 --
 
@@ -459,7 +493,7 @@ ALTER TABLE ONLY public.empleados
 
 
 --
--- TOC entry 3322 (class 2606 OID 16513)
+-- TOC entry 3359 (class 2606 OID 16513)
 -- Name: estudios estudios_pkey; Type: CONSTRAINT; Schema: public; Owner: pps_user
 --
 
@@ -468,7 +502,7 @@ ALTER TABLE ONLY public.estudios
 
 
 --
--- TOC entry 3336 (class 2606 OID 16603)
+-- TOC entry 3373 (class 2606 OID 16603)
 -- Name: familiares familiares_pkey; Type: CONSTRAINT; Schema: public; Owner: pps_user
 --
 
@@ -477,7 +511,7 @@ ALTER TABLE ONLY public.familiares
 
 
 --
--- TOC entry 3316 (class 2606 OID 16496)
+-- TOC entry 3353 (class 2606 OID 16496)
 -- Name: funciones funciones_pkey; Type: CONSTRAINT; Schema: public; Owner: pps_user
 --
 
@@ -486,7 +520,7 @@ ALTER TABLE ONLY public.funciones
 
 
 --
--- TOC entry 3324 (class 2606 OID 16518)
+-- TOC entry 3361 (class 2606 OID 16518)
 -- Name: parentesco parentesco_pkey; Type: CONSTRAINT; Schema: public; Owner: pps_user
 --
 
@@ -495,7 +529,7 @@ ALTER TABLE ONLY public.parentesco
 
 
 --
--- TOC entry 3318 (class 2606 OID 16501)
+-- TOC entry 3355 (class 2606 OID 16501)
 -- Name: reparticiones reparticiones_pkey; Type: CONSTRAINT; Schema: public; Owner: pps_user
 --
 
@@ -504,7 +538,7 @@ ALTER TABLE ONLY public.reparticiones
 
 
 --
--- TOC entry 3314 (class 2606 OID 16491)
+-- TOC entry 3351 (class 2606 OID 16491)
 -- Name: roles roles_pkey; Type: CONSTRAINT; Schema: public; Owner: pps_user
 --
 
@@ -513,7 +547,7 @@ ALTER TABLE ONLY public.roles
 
 
 --
--- TOC entry 3326 (class 2606 OID 16525)
+-- TOC entry 3363 (class 2606 OID 16525)
 -- Name: usuarios usuarios_pkey; Type: CONSTRAINT; Schema: public; Owner: pps_user
 --
 
@@ -522,7 +556,7 @@ ALTER TABLE ONLY public.usuarios
 
 
 --
--- TOC entry 3330 (class 2606 OID 16557)
+-- TOC entry 3367 (class 2606 OID 16557)
 -- Name: usuarioslegajos usuarioslegajos_pkey; Type: CONSTRAINT; Schema: public; Owner: pps_user
 --
 
@@ -531,7 +565,7 @@ ALTER TABLE ONLY public.usuarioslegajos
 
 
 --
--- TOC entry 3345 (class 2606 OID 16575)
+-- TOC entry 3382 (class 2606 OID 16575)
 -- Name: direcciones direcciones_legajo_fkey; Type: FK CONSTRAINT; Schema: public; Owner: pps_user
 --
 
@@ -540,7 +574,7 @@ ALTER TABLE ONLY public.direcciones
 
 
 --
--- TOC entry 3350 (class 2606 OID 16624)
+-- TOC entry 3387 (class 2606 OID 16624)
 -- Name: emp_cud emp_cud_idarchivo_fkey; Type: FK CONSTRAINT; Schema: public; Owner: pps_user
 --
 
@@ -549,7 +583,7 @@ ALTER TABLE ONLY public.emp_cud
 
 
 --
--- TOC entry 3351 (class 2606 OID 16619)
+-- TOC entry 3388 (class 2606 OID 16619)
 -- Name: emp_cud emp_cud_legajo_fkey; Type: FK CONSTRAINT; Schema: public; Owner: pps_user
 --
 
@@ -558,7 +592,7 @@ ALTER TABLE ONLY public.emp_cud
 
 
 --
--- TOC entry 3346 (class 2606 OID 16592)
+-- TOC entry 3383 (class 2606 OID 16592)
 -- Name: empestudios empestudios_codestudio_fkey; Type: FK CONSTRAINT; Schema: public; Owner: pps_user
 --
 
@@ -567,7 +601,7 @@ ALTER TABLE ONLY public.empestudios
 
 
 --
--- TOC entry 3347 (class 2606 OID 16587)
+-- TOC entry 3384 (class 2606 OID 16587)
 -- Name: empestudios empestudios_legajo_fkey; Type: FK CONSTRAINT; Schema: public; Owner: pps_user
 --
 
@@ -576,7 +610,7 @@ ALTER TABLE ONLY public.empestudios
 
 
 --
--- TOC entry 3340 (class 2606 OID 16548)
+-- TOC entry 3377 (class 2606 OID 16548)
 -- Name: empleados empleados_idarchivofoto_fkey; Type: FK CONSTRAINT; Schema: public; Owner: pps_user
 --
 
@@ -585,7 +619,7 @@ ALTER TABLE ONLY public.empleados
 
 
 --
--- TOC entry 3341 (class 2606 OID 16538)
+-- TOC entry 3378 (class 2606 OID 16538)
 -- Name: empleados empleados_idfuncion_fkey; Type: FK CONSTRAINT; Schema: public; Owner: pps_user
 --
 
@@ -594,7 +628,7 @@ ALTER TABLE ONLY public.empleados
 
 
 --
--- TOC entry 3342 (class 2606 OID 16543)
+-- TOC entry 3379 (class 2606 OID 16543)
 -- Name: empleados empleados_idreparticion_fkey; Type: FK CONSTRAINT; Schema: public; Owner: pps_user
 --
 
@@ -603,7 +637,7 @@ ALTER TABLE ONLY public.empleados
 
 
 --
--- TOC entry 3348 (class 2606 OID 16604)
+-- TOC entry 3385 (class 2606 OID 16604)
 -- Name: familiares familiares_legajo_fkey; Type: FK CONSTRAINT; Schema: public; Owner: pps_user
 --
 
@@ -612,7 +646,7 @@ ALTER TABLE ONLY public.familiares
 
 
 --
--- TOC entry 3349 (class 2606 OID 16609)
+-- TOC entry 3386 (class 2606 OID 16609)
 -- Name: familiares familiares_parentesco_fkey; Type: FK CONSTRAINT; Schema: public; Owner: pps_user
 --
 
@@ -621,7 +655,7 @@ ALTER TABLE ONLY public.familiares
 
 
 --
--- TOC entry 3339 (class 2606 OID 16526)
+-- TOC entry 3376 (class 2606 OID 16526)
 -- Name: usuarios usuarios_idrol_fkey; Type: FK CONSTRAINT; Schema: public; Owner: pps_user
 --
 
@@ -630,7 +664,7 @@ ALTER TABLE ONLY public.usuarios
 
 
 --
--- TOC entry 3343 (class 2606 OID 16563)
+-- TOC entry 3380 (class 2606 OID 16563)
 -- Name: usuarioslegajos usuarioslegajos_legajo_fkey; Type: FK CONSTRAINT; Schema: public; Owner: pps_user
 --
 
@@ -639,7 +673,7 @@ ALTER TABLE ONLY public.usuarioslegajos
 
 
 --
--- TOC entry 3344 (class 2606 OID 16558)
+-- TOC entry 3381 (class 2606 OID 16558)
 -- Name: usuarioslegajos usuarioslegajos_usucodigo_fkey; Type: FK CONSTRAINT; Schema: public; Owner: pps_user
 --
 
@@ -647,11 +681,10 @@ ALTER TABLE ONLY public.usuarioslegajos
     ADD CONSTRAINT usuarioslegajos_usucodigo_fkey FOREIGN KEY (usucodigo) REFERENCES public.usuarios(usucodigo);
 
 
--- Completed on 2026-09-09 01:37:50
+-- Completed on 2026-10-22 19:26:02
 
 --
 -- PostgreSQL database dump complete
 --
 
-\unrestrict na4QPKK6h2UPSbPdYmO4Yda7wXf6eD1PgapUgeXQCMcuHr4gpftBCMNWdniVhAb
 

@@ -6,25 +6,14 @@ import {
   IsIn,
   IsNotEmpty,
   IsOptional,
-  IsUrl,
   Matches,
   MinLength,
   MaxLength,
   IsString,
   ValidateNested,
+  IsDateString,
+  IsInt,
 } from 'class-validator';
-
-const REPARTICIONES = [
-  'CONCEJO DELIBERANTE',
-  'JUZGADO DE FALTAS',
-  'SECRETARIA DE COORDINACION DE GABINETE Y HACIENDA',
-  'SECRETARIA DE DESARROLLO HUMANO',
-  'SECRETARIA DE DESARROLLO PRODUCTIVO',
-  'SECRETARIA DE GOBIERNO',
-  'SECRETARIA DE OBRAS PUBLICAS',
-  'SECRETARIA DE SALUD',
-  'SECRETARIA DE SERVICIOS PUBLICOS',
-] as const;
 
 const ESTADOS_CIVILES = [
   'Soltero/a',
@@ -35,32 +24,31 @@ const ESTADOS_CIVILES = [
   'Unión convivencial',
 ] as const;
 
-const FUNCIONES = [
-  'Administrativo',
-  'Operario',
-  'Maestranza',
-  'Chofer',
-  'Guardavida',
-  'Guardaparques',
-  'Guía Turístico',
-  'Inspector',
-  'Profesional de la Salud',
-  'Docente',
-  'Profesional Informático',
-  'Profesional en general',
-  'Técnico en general',
-  'Personal de Seguridad',
-  'Cajero',
-  'Juez',
-  'Fiscal',
-  'Concejal',
-] as const;
-
 export class FamiliarDto {
   @IsString()
   @IsNotEmpty()
   @MaxLength(120)
-  nombre!: string;
+  apellidos!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(120)
+  nombres!: string;
+
+  @IsString()
+  @IsIn(['DNI', 'LC', 'LE', 'CI', 'Pasaporte'])
+  tipoDocumento!: string;
+
+  @IsString()
+  @Matches(/^[A-Za-z0-9.-]{3,20}$/)
+  numeroDocumento!: string;
+
+  @IsString()
+  @IsIn(['F', 'M', 'X'])
+  sexo!: string;
+
+  @IsDateString()
+  fechaNacimiento!: string;
 
   @IsString()
   @IsNotEmpty()
@@ -108,8 +96,9 @@ export class SolicitudDatosDto {
   email?: string;
 
   @IsOptional()
-  @IsIn(REPARTICIONES)
-  reparticion?: string;
+  @Type(() => Number)
+  @IsInt()
+  reparticion?: number;
 
   @IsOptional()
   @IsIn(ESTADOS_CIVILES)
@@ -130,14 +119,19 @@ export class SolicitudDatosDto {
 
   @IsOptional()
   @IsString()
-  @Matches(/^data:(image\/(jpeg|jpg|png|webp)|application\/pdf);base64,[a-z0-9+/=]+$/i, {
-    message: 'El certificado debe ser una imagen JPG, PNG, WEBP o un PDF válido',
-  })
+  @Matches(
+    /^data:(image\/(jpeg|jpg|png|webp)|application\/pdf);base64,[a-z0-9+/=]+$/i,
+    {
+      message:
+        'El certificado debe ser una imagen JPG, PNG, WEBP o un PDF válido',
+    },
+  )
   certificadoDiscapacidad?: string;
 
   @IsOptional()
-  @IsIn(FUNCIONES)
-  funcion?: string;
+  @Type(() => Number)
+  @IsInt()
+  funcion?: number;
 
   @IsOptional()
   @IsBoolean()

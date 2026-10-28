@@ -1,5 +1,3 @@
-version: '3.9'
-
 services:
   postgres:
     image: postgres:15
@@ -7,22 +5,26 @@ services:
     restart: always
     environment:
       POSTGRES_USER: pps_user
-      POSTGRES_PASSWORD: pps_password
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-change-me-local}
       POSTGRES_DB: pps_db
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./pps_db.sql:/docker-entrypoint-initdb.d/01-pps.sql:ro
+      - ./backend/migrations/001_create_solicitudes.sql:/docker-entrypoint-initdb.d/02-solicitudes.sql:ro
+      - ./backend/migrations/002_seed_catalogos.sql:/docker-entrypoint-initdb.d/03-catalogos.sql:ro
 
   pgadmin:
     image: dpage/pgadmin4
     container_name: pps_pgadmin
     restart: always
     environment:
-      PGADMIN_DEFAULT_EMAIL: admin@pps.com
-      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@pps.local}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-change-me-local}
+      PGADMIN_CONFIG_SERVER_MODE: "False"
     ports:
-      - "8080:80"
+      - "127.0.0.1:8080:80"
 
 volumes:
   postgres_data:

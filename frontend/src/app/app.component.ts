@@ -1,19 +1,24 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, inject } from '@angular/core';
+import { ActivatedRoute, NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { forkJoin, of } from 'rxjs';
+import { filter, forkJoin, of } from 'rxjs';
 import { AuthService } from './core/auth.service';
-import { Empleado, Familiar, FichaEmpleado, MunicipalService, Solicitud } from './core/municipal.service';
+import { Empleado, FichaEmpleado, Familiar, MunicipalService, Solicitud, SolicitudCatalogos } from './core/municipal.service';
+import { LoginComponent } from './auth/login.component';
+import { EmployeeViewComponent } from './employee/employee-view.component';
+import { HrViewComponent } from './hr/hr-view.component';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, RouterOutlet, LoginComponent, EmployeeViewComponent, HrViewComponent],
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss'
 })
 export class AppComponent implements OnInit {
   private readonly municipalService = inject(MunicipalService);
+  private readonly router = inject(Router);
   readonly authService = inject(AuthService);
   activeSection = 'Resumen';
   search = '';
@@ -23,14 +28,21 @@ export class AppComponent implements OnInit {
   familyRelation = '';
   familyPhone = '';
   familyDisability: boolean | null = null;
+  familyLastName = '';
+  familyDocumentType = '';
+  familyDocumentNumber = '';
+  familySex = '';
+  familyBirthDate = '';
+  pendingChanges: Record<string, unknown> = {};
+  requestError = '';
+  catalogosSolicitud: SolicitudCatalogos = { reparticiones: [], funciones: [], parentescos: [], estadosCiviles: [] };
   poseeCud: boolean | null = null;
   requestFile: File | null = null;
   fileError = '';
   readingFile = false;
   showRequestForm = false;
   loading = true;
-  loginEmail = '';
-  loginPassword = '';
+  loginToken = '';
   loginError = '';
   apiError = '';
   approvalError = '';
@@ -41,45 +53,41 @@ export class AppComponent implements OnInit {
   employees: Empleado[] = [];
   requests: Solicitud[] = [];
   employeeProfile: FichaEmpleado | null = null;
-  readonly estadosCiviles = [
-    'Soltero/a',
-    'Casado/a',
-    'Divorciado/a',
-    'Viudo/a',
-  ];
-  readonly reparticiones = [
-    'CONCEJO DELIBERANTE',
-    'JUZGADO DE FALTAS',
-    'SECRETARIA DE COORDINACION DE GABINETE Y HACIENDA',
-    'SECRETARIA DE DESARROLLO HUMANO',
-    'SECRETARIA DE DESARROLLO PRODUCTIVO',
-    'SECRETARIA DE GOBIERNO',
-    'SECRETARIA DE OBRAS PUBLICAS',
-    'SECRETARIA DE SALUD',
-    'SECRETARIA DE SERVICIOS PUBLICOS',
-  ];
-  readonly funciones = [
-    'Administrativo', 'Operario', 'Maestranza', 'Chofer', 'Guardavida', 'Guardaparques',
-    'Guía Turístico', 'Inspector', 'Profesional de la Salud', 'Docente', 'Profesional Informático',
-    'Profesional en general', 'Técnico en general', 'Personal de Seguridad', 'Cajero', 'Juez',
-    'Fiscal', 'Concejal',
-  ];
-  readonly vinculosFamiliares = [
-    'Cónyuge', 'Hijo/a', 'Padre/Madre', 'Hermano/a', 'Abuelo/a', 'Nieto/a', 'Otro familiar',
-  ];
+  readonly tiposDocumento = ['DNI', 'LC', 'LE', 'CI', 'Pasaporte'];
+  readonly sexos = [{ value: 'F', label: 'Femenino' }, { value: 'M', label: 'Masculino' }, { value: 'X', label: 'Otro / no especificado' }];
 
   ngOnInit() {
+    this.router.events.pipe(filter((event) => event instanceof NavigationEnd)).subscribe(() => {
+      const segments = this.router.url.split('?')[0].split('/').filter(Boolean);
+      this.activeSection = segments[0] === 'rrhh' ? this.titleCase(segments[1] ?? 'Resumen') : segments[0] === 'empleado' ? 'Inicio' : 'Login';
+      if (this.isAuthenticated && segments[0] !== 'login') this.refresh();
+    });
     if (this.isAuthenticated) {
-      this.activeSection = this.isBackOffice ? 'Resumen' : 'Inicio';
-      this.refresh();
+      this.loadSolicitudCatalogos();
+      void this.router.navigate([this.isBackOffice ? '/rrhh/Resumen' : '/empleado']);
+    } else {
+      void this.router.navigate(['/login']);
     }
+  }
+
+  private titleCase(value: string) {
+    return value.charAt(0).toUpperCase() + value.slice(1);
+  }
+
+  loadSolicitudCatalogos() {
+    this.municipalService.getCatalogosSolicitud().subscribe({
+      next: (catalogos) => { this.catalogosSolicitud = catalogos; },
+      error: () => { this.apiError = 'No se pudieron cargar los catálogos del formulario.'; },
+    });
   }
 
   refresh() {
     this.loading = true;
     this.apiError = '';
     const employees$ = this.isBackOffice ? this.municipalService.getEmpleados() : of([] as Empleado[]);
-    const requests$ = this.isBackOffice ? this.municipalService.getSolicitudes() : of([] as Solicitud[]);
+    const requests$ = this.isBackOffice && this.activeSection !== 'Reportes'
+      ? this.municipalService.getSolicitudes('pendiente')
+      : this.isBackOffice ? this.municipalService.getSolicitudes('all') : of([] as Solicitud[]);
     const profile$ = this.isBackOffice ? of(null) : this.municipalService.getMiFicha();
     forkJoin({
       employees: employees$,
@@ -119,13 +127,23 @@ export class AppComponent implements OnInit {
   }
 
   get isBackOffice() {
-    return String(this.authService.currentUser?.rol ?? '') === '1';
+    const role = String(this.authService.currentUser?.rol ?? '').toLowerCase();
+    return role === '1' || role === 'rrhh' || role === 'rrhh-admin' || role === 'admin';
+  }
+
+  get activeEmployees() {
+    return this.employees.filter((employee) => String(employee.estado ?? '').toUpperCase() === 'AC');
   }
 
   get navItems() {
     return this.isBackOffice
-      ? ['Resumen', 'Solicitudes', 'Personal', 'Reportes']
-      : ['Inicio', 'Nueva solicitud'];
+      ? [
+          { label: 'Resumen', section: 'Resumen' },
+          { label: 'Solicitudes', section: 'Solicitudes' },
+          { label: 'Personal', section: 'Personal' },
+          { label: 'Reportes', section: 'Reportes' },
+        ]
+      : [{ label: 'Inicio', section: 'Inicio' }];
   }
 
   get initials() {
@@ -133,15 +151,16 @@ export class AppComponent implements OnInit {
   }
 
   login() {
-    if (!this.loginEmail.trim() || !this.loginPassword) return;
+    if (!this.loginToken.trim()) return;
     this.loginError = '';
-    this.authService.login(this.loginEmail.trim(), this.loginPassword).subscribe({
+    this.authService.login(this.loginToken).subscribe({
       next: () => {
-        this.loginPassword = '';
+        this.loginToken = '';
         this.activeSection = this.isBackOffice ? 'Resumen' : 'Inicio';
+        this.loadSolicitudCatalogos();
         this.refresh();
       },
-      error: () => { this.loginError = 'Correo o contraseña inválidos.'; },
+      error: () => { this.loginError = 'El token no es válido o expiró. Solicitá uno vigente al proveedor de identidad.'; },
     });
   }
 
@@ -161,50 +180,105 @@ export class AppComponent implements OnInit {
   }
 
   get personalDistribution() {
-    const total = this.employees.length;
+    const total = this.activeEmployees.length;
     const groups = new Map<string, number>();
-    this.employees.forEach((employee) => {
+    this.activeEmployees.forEach((employee) => {
       const area = employee.reparticion || 'Sin repartición';
       groups.set(area, (groups.get(area) ?? 0) + 1);
     });
-    return [...groups.entries()].sort(([, countA], [, countB]) => countB - countA).slice(0, 3).map(([name, count], index) => ({
+    const sortedGroups = [...groups.entries()].sort(([, countA], [, countB]) => countB - countA);
+    const exactPercentages = sortedGroups.map(([, count]) => total ? count * 100 / total : 0);
+    const displayPercentages = exactPercentages.map(Math.floor);
+    let unallocated = 100 - displayPercentages.reduce((sum, percentage) => sum + percentage, 0);
+    const remainderIndexes = exactPercentages
+      .map((percentage, index) => ({ index, remainder: percentage - Math.floor(percentage) }))
+      .sort((first, second) => second.remainder - first.remainder);
+    for (const item of remainderIndexes) {
+      if (unallocated <= 0) break;
+      displayPercentages[item.index] += 1;
+      unallocated -= 1;
+    }
+    return sortedGroups.map(([name, count], index) => ({
       name,
-      percentage: total ? Math.round(count * 100 / total) : 0,
-      color: ['blue', 'amber', 'green'][index],
+      count,
+      percentage: total ? displayPercentages[index] : 0,
+      color: ['#2868a2', '#d19b35', '#31866d', '#c65c48', '#6657a6', '#468eac'][index % 6],
     }));
+  }
+
+  get distributionGradient() {
+    let stop = 0;
+    const segments = this.personalDistribution.map((group) => {
+      const start = stop;
+      stop += this.activeEmployees.length ? group.count * 100 / this.activeEmployees.length : 0;
+      return `${group.color} ${start}% ${stop}%`;
+    });
+    return `conic-gradient(${segments.length ? segments.join(', ') : '#e6ecea 0% 100%'})`;
   }
 
   getRequestChangeEntries(request: Solicitud) {
     const labels: Record<string, string> = {
-      domicilio: 'Domicilio', telefono: 'Teléfono personal', telefonos: 'Teléfonos adicionales',
+      domicilio: 'Domicilio', telefono: 'Teléfonos de contacto', telefonos: 'Teléfonos de contacto',
       email: 'Correo electrónico', correoElectronico: 'Correo electrónico', reparticion: 'Repartición',
       estadoCivil: 'Estado civil', familiares: 'Familiares', foto: 'Foto', funcion: 'Función',
       poseeCud: 'CUD', certificadoDiscapacidad: 'Certificado de discapacidad',
     };
-    return Object.entries(request.cambios ?? {}).map(([field, value]) => ({
-      label: labels[field] ?? field,
-      value: this.formatRequestChange(field, value),
-    }));
+    const previous = request.valoresAnteriores ?? {};
+    return Object.entries(request.cambios ?? {}).map(([field, value]) => {
+      const previousField = field === 'email' ? 'correoElectronico'
+        : field === 'correoElectronico' ? 'email'
+          : field === 'telefono' ? 'telefonos'
+            : field;
+      let current = previous[field] ?? previous[previousField] ?? 'Sin informar';
+      if (field === 'telefonos' && !Array.isArray(current)) current = current === 'Sin informar' ? current : [current];
+      if (field === 'telefono' && current === 'Sin informar' && Array.isArray(previous['telefonos'])) current = previous['telefonos'][0] ?? current;
+      if (field === 'telefonos' && current === 'Sin informar' && previous['telefono']) current = [previous['telefono']];
+      if (field === 'email' || field === 'correoElectronico') {
+        current = previous['email'] ?? previous['correoElectronico'] ?? current;
+      }
+      return {
+        label: labels[field] ?? field,
+        value: `${this.formatRequestChange(field, current)} → ${this.formatRequestChange(field, value, request)}`,
+      };
+    });
   }
 
-  private formatRequestChange(field: string, value: unknown) {
+  private formatRequestChange(field: string, value: unknown, request?: Solicitud) {
     if (field === 'foto' || field === 'certificadoDiscapacidad') return 'Archivo adjunto';
     if (field === 'poseeCud') return value === true ? 'Sí' : 'No';
     if (field === 'familiares' && Array.isArray(value)) {
       return value.map((family) => {
         const item = family as Record<string, unknown>;
-        return `${item['nombre'] ?? ''} (${item['vinculo'] ?? ''})`;
+        return `${item['apellidos'] ?? ''}, ${item['nombres'] ?? ''} · ${item['tipoDocumento'] ?? ''} ${item['numeroDocumento'] ?? ''} (${item['vinculo'] ?? ''})`;
       }).join(', ');
     }
+    if (field === 'funcion' && request?.catalogosSolicitados?.funcion && value === request.cambios?.['funcion']) {
+      return request.catalogosSolicitados.funcion;
+    }
+    if (field === 'funcion' && typeof value === 'number') return `ID de función ${value}`;
+    if (field === 'reparticion' && request?.catalogosSolicitados?.reparticion && value === request.cambios?.['reparticion']) {
+      return request.catalogosSolicitados.reparticion;
+    }
+    if (field === 'reparticion' && typeof value === 'number') return `ID de repartición ${value}`;
     return Array.isArray(value) ? value.join(', ') : String(value);
   }
 
-  setSection(section: string) {
-    if (!this.isBackOffice && section === 'Nueva solicitud') {
-      this.showRequestForm = true;
+  navigate(section: string) {
+    if (!this.isBackOffice) {
+      void this.router.navigate(['/empleado']);
       return;
     }
-    this.activeSection = section;
+    void this.router.navigate(['/rrhh', section]);
+  }
+
+  onAuthenticate(token: string) {
+    this.authService.login(token).subscribe({
+      next: () => {
+        this.loadSolicitudCatalogos();
+        void this.router.navigate([this.isBackOffice ? '/rrhh/Resumen' : '/empleado']);
+      },
+      error: () => this.loginView?.setError('El token no es válido o expiró. Solicitá uno vigente al proveedor de identidad.'),
+    });
   }
 
   changeRequestField(field: string) {
@@ -214,6 +288,11 @@ export class AppComponent implements OnInit {
     this.familyRelation = '';
     this.familyPhone = '';
     this.familyDisability = null;
+    this.familyLastName = '';
+    this.familyDocumentType = '';
+    this.familyDocumentNumber = '';
+    this.familySex = '';
+    this.familyBirthDate = '';
     this.poseeCud = null;
     this.requestFile = null;
     this.fileError = '';
@@ -238,9 +317,51 @@ export class AppComponent implements OnInit {
   submitRequest() {
     const value = this.requestPayload;
     if (value === null) return;
-    this.municipalService.crearSolicitud(this.requestField, value).subscribe({
-      next: () => { this.showRequestForm = false; this.requestValue = ''; this.refresh(); },
-      error: () => { this.apiError = 'No se pudo crear la solicitud.'; }
+    if (this.requestField !== 'familiares' && Object.hasOwn(this.pendingChanges, this.requestField)) {
+      this.requestError = `Ya agregaste ${this.requestField} a esta solicitud.`;
+      return;
+    }
+    const change = this.requestField === 'telefonos'
+      ? { telefonos: value as string[] }
+      : this.requestField === 'poseeCud'
+      ? value as Record<string, unknown>
+      : { [this.requestField]: value };
+    this.pendingChanges = {
+      ...this.pendingChanges,
+      ...change,
+      ...(this.requestField === 'familiares' && Array.isArray(this.pendingChanges['familiares'])
+        ? { familiares: [...this.pendingChanges['familiares'] as Familiar[], ...(change['familiares'] as Familiar[])] }
+        : {}),
+    };
+    this.changeRequestField(this.requestField);
+    this.requestError = '';
+  }
+
+  removePendingChange(field: string) {
+    const { [field]: removed, ...remaining } = this.pendingChanges;
+    void removed;
+    this.pendingChanges = remaining;
+  }
+
+  closeRequestForm() {
+    this.showRequestForm = false;
+    this.pendingChanges = {};
+    this.requestError = '';
+    this.changeRequestField('domicilio');
+  }
+
+  sendPendingChanges() {
+    if (!Object.keys(this.pendingChanges).length) return;
+    this.requestError = '';
+    this.municipalService.crearSolicitud(this.pendingChanges).subscribe({
+      next: () => {
+        this.closeRequestForm();
+        this.refresh();
+      },
+      error: (error: { error?: { message?: string | string[] } }) => {
+        const message = error.error?.message;
+        this.requestError = Array.isArray(message) ? message.join(' ') : message ?? 'No se pudo crear la solicitud.';
+      },
     });
   }
 
@@ -282,7 +403,7 @@ export class AppComponent implements OnInit {
     reader.readAsDataURL(file);
   }
 
-  get requestPayload(): string | string[] | Familiar[] | Record<string, unknown> | null {
+  get requestPayload(): string | number | string[] | Familiar[] | Record<string, unknown> | null {
     if (this.requestField === 'poseeCud') {
       if (this.poseeCud === null) return null;
       if (!this.poseeCud) return { poseeCud: false };
@@ -290,9 +411,14 @@ export class AppComponent implements OnInit {
       return { poseeCud: true, certificadoDiscapacidad: this.requestValue };
     }
     if (this.requestField === 'familiares') {
-      if (!this.familyName.trim() || !this.familyRelation.trim()) return null;
+      if (!this.familyName.trim() || !this.familyLastName.trim() || !this.familyDocumentType || !this.familyDocumentNumber.trim() || !this.familySex || !this.familyBirthDate || !this.familyRelation.trim()) return null;
       return [{
-        nombre: this.familyName.trim(),
+        apellidos: this.familyLastName.trim(),
+        nombres: this.familyName.trim(),
+        tipoDocumento: this.familyDocumentType,
+        numeroDocumento: this.familyDocumentNumber.trim(),
+        sexo: this.familySex,
+        fechaNacimiento: this.familyBirthDate,
         vinculo: this.familyRelation.trim(),
         ...(this.familyPhone.trim() ? { telefono: this.familyPhone.trim() } : {}),
         ...(this.familyDisability !== null ? { discapacitado: this.familyDisability } : {}),
@@ -302,14 +428,36 @@ export class AppComponent implements OnInit {
     if (!this.requestValue.trim()) return null;
     if (this.requestField === 'telefonos') {
       const phones = this.requestValue.split(',').map((phone) => phone.trim()).filter(Boolean);
-      return phones.length ? phones : null;
+      return phones.length > 0 && phones.length <= 2 ? phones : null;
     }
 
+    if (this.requestField === 'funcion' || this.requestField === 'reparticion') {
+      const id = Number(this.requestValue);
+      return Number.isSafeInteger(id) && id > 0 ? id : null;
+    }
     return this.requestValue.trim();
   }
 
   get requestCanSubmit() {
     return this.requestPayload !== null && !this.requestValidationMessage;
+  }
+
+  get pendingChangeEntries() {
+    return Object.entries(this.pendingChanges);
+  }
+
+  get hasPendingChanges() {
+    return this.pendingChangeEntries.length > 0;
+  }
+
+  formatPendingValue(field: string, value: unknown) {
+    if (field === 'funcion') {
+      return this.catalogosSolicitud.funciones.find((item) => item.id === Number(value))?.nombre ?? String(value);
+    }
+    if (field === 'reparticion') {
+      return this.catalogosSolicitud.reparticiones.find((item) => item.id === Number(value))?.nombre ?? String(value);
+    }
+    return this.formatRequestChange(field, value);
   }
 
   get requestValidationMessage() {
@@ -320,11 +468,13 @@ export class AppComponent implements OnInit {
     }
     if (this.requestField === 'familiares') {
       if (this.familyPhone.trim() && !this.isPhoneValid(this.familyPhone)) return 'El teléfono del familiar no tiene un formato válido.';
+      if (this.familyDocumentNumber.trim() && !/^[A-Za-z0-9.-]{3,20}$/.test(this.familyDocumentNumber.trim())) return 'El número de documento debe tener entre 3 y 20 caracteres válidos.';
       return '';
     }
 
     if (this.requestField === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.requestValue.trim())) return 'Ingresá un correo válido, por ejemplo persona@correo.com.';
     if (this.requestField === 'telefono' && !this.isPhoneValid(this.requestValue)) return 'Ingresá un teléfono válido.';
+    if (this.requestField === 'telefonos' && this.requestValue.split(',').filter((phone) => phone.trim()).length > 2) return 'Ingresá como máximo dos teléfonos.';
     if (this.requestField === 'telefonos' && this.requestValue.split(',').some((phone) => phone.trim() && !this.isPhoneValid(phone))) return 'Revisá el formato de los teléfonos separados por coma.';
     if (this.requestField === 'domicilio' && this.requestValue.trim().length > 0 && this.requestValue.trim().length < 5) return 'El domicilio debe tener al menos 5 caracteres.';
     if ((this.requestField === 'foto' || this.requestField === 'certificadoDiscapacidad') && (!this.requestFile || !this.requestValue)) return 'Seleccioná un archivo válido.';
@@ -337,23 +487,23 @@ export class AppComponent implements OnInit {
 
   downloadRequestReport() {
     if (this.reportRequestId === null || !this.isRrhh) return;
-    this.downloadBlob(this.municipalService.descargarReporteSolicitud(this.reportRequestId), `solicitud-${this.reportRequestId}.pdf`);
-  }
-
-  private downloadBlob(request: ReturnType<MunicipalService['descargarReporteSolicitud']>, filename: string) {
+    const reportWindow = window.open('', '_blank');
     this.reportLoading = true;
     this.reportError = '';
-    request.subscribe({
+    this.municipalService.descargarReporteSolicitud(this.reportRequestId).subscribe({
       next: (blob) => {
         const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = filename;
-        link.click();
-        URL.revokeObjectURL(url);
+        if (reportWindow) {
+          reportWindow.location.href = url;
+          window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+        } else {
+          URL.revokeObjectURL(url);
+          this.reportError = 'El navegador bloqueó la ventana del reporte. Permití ventanas emergentes e intentá otra vez.';
+        }
         this.reportLoading = false;
       },
       error: () => {
+        reportWindow?.close();
         this.reportLoading = false;
         this.reportError = 'No se pudo generar el reporte. Revisá tu sesión y los permisos.';
       },

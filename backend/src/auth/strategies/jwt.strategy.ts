@@ -3,26 +3,43 @@ import { PassportStrategy } from '@nestjs/passport';
 import type { Algorithm } from 'jsonwebtoken';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 
+export function resolveJwtOptions(environment = process.env) {
+  const publicKey = environment.JWT_PUBLIC_KEY;
+  const secretOrKey = (publicKey ?? environment.JWT_SECRET)?.replace(
+    /\\n/g,
+    '\n',
+  );
+  if (!secretOrKey) {
+    throw new Error(
+      'Configurá JWT_PUBLIC_KEY o JWT_SECRET del proveedor de identidad externo',
+    );
+  }
+  const algorithms = (
+    environment.JWT_ALGORITHM ?? (publicKey ? 'RS256' : 'HS256')
+  )
+    .split(',')
+    .map((value) => value.trim()) as Algorithm[];
+
+  return {
+    secretOrKey,
+    algorithms,
+    jsonWebTokenOptions: { maxAge: environment.JWT_MAX_AGE ?? '1h' },
+  };
+}
+
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor() {
-    const jwtSecret =
-      process.env.JWT_SECRET ?? process.env.JWT_PUBLIC_KEY ?? 'pps-secret-key';
-    const algorithms = (process.env.JWT_ALGORITHM ?? 'HS256')
-      .split(',')
-      .map((value) => value.trim()) as Algorithm[];
-
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: jwtSecret,
-      algorithms,
+      ...resolveJwtOptions(),
     });
   }
 
   validate(payload: any) {
-    if (!payload) {
-      throw new UnauthorizedException('Token inválido');
+    if (!payload || typeof payload.exp !== 'number') {
+      throw new UnauthorizedException('El JWT debe incluir una expiración');
     }
 
     const role =

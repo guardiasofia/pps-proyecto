@@ -1,5 +1,5 @@
 export const envConfig = {
-  jwtSecret: process.env.JWT_SECRET ?? 'pps-secret-key',
+  jwtSecret: process.env.JWT_PUBLIC_KEY ?? process.env.JWT_SECRET,
   port: Number(process.env.PORT ?? 3000),
   database: {
     host: process.env.DB_HOST ?? 'localhost',

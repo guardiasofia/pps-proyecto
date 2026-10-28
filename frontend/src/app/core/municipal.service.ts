@@ -18,13 +18,30 @@ export interface Solicitud {
   estado: string;
   fecha?: string;
   solicitante?: string;
+  empleadoNombre?: string;
+  empleadoActivo?: boolean;
+  valoresAnteriores?: Record<string, unknown>;
+  catalogosSolicitados?: { funcion?: string; reparticion?: string };
   cambios?: Record<string, unknown>;
 }
 
 export interface Familiar {
-  nombre: string;
+  apellidos: string;
+  nombres: string;
+  tipoDocumento: string;
+  numeroDocumento: string;
+  sexo: string;
+  fechaNacimiento: string;
   vinculo: string;
   telefono?: string;
+  discapacitado?: boolean;
+}
+
+export interface SolicitudCatalogos {
+  reparticiones: Array<{ id: number; nombre: string }>;
+  funciones: Array<{ id: number; nombre: string }>;
+  parentescos: string[];
+  estadosCiviles: string[];
 }
 
 export interface FichaEmpleado {
@@ -50,7 +67,7 @@ export interface FichaEmpleado {
 @Injectable({ providedIn: 'root' })
 export class MunicipalService {
   private readonly http = inject(HttpClient);
-  private readonly apiUrl = 'http://localhost:3000/api';
+  private readonly apiUrl = '/api';
 
   getEmpleados() {
     return this.http.get<BackendEmpleado[]>(`${this.apiUrl}/empleados`).pipe(
@@ -66,23 +83,28 @@ export class MunicipalService {
     );
   }
 
-  getSolicitudes() {
-    return this.http.get<BackendSolicitud[]>(`${this.apiUrl}/solicitudes`).pipe(
+  getSolicitudes(estado: 'pendiente' | 'all' = 'pendiente') {
+    return this.http.get<BackendSolicitud[]>(`${this.apiUrl}/solicitudes?estado=${estado}`).pipe(
       map((requests) => requests.map((request) => ({
         id: request.id,
         tipo: request.tipo,
         estado: request.estado,
         fecha: request.creadoEn ? new Date(request.creadoEn).toLocaleDateString('es-AR') : undefined,
-        solicitante: request.legajo ? `Legajo ${request.legajo}` : undefined,
+        solicitante: request.empleadoId ? `Legajo ${request.empleadoId}` : undefined,
+        empleadoNombre: request.empleadoNombre,
+        empleadoActivo: request.empleadoActivo,
+        valoresAnteriores: request.valoresAnteriores,
+        catalogosSolicitados: request.catalogosSolicitados,
         cambios: request.cambios,
       })))
     );
   }
 
-  crearSolicitud(campo: string, valor: string | string[] | Familiar[] | Record<string, unknown>) {
-    const cambios = campo === 'poseeCud' && !Array.isArray(valor) && typeof valor === 'object'
-      ? valor
-      : { [campo]: valor };
+  getCatalogosSolicitud() {
+    return this.http.get<SolicitudCatalogos>(`${this.apiUrl}/solicitudes/catalogos`);
+  }
+
+  crearSolicitud(cambios: Record<string, unknown>) {
     return this.http.post<BackendSolicitud>(`${this.apiUrl}/solicitudes`, {
       cambios,
     });
@@ -90,7 +112,6 @@ export class MunicipalService {
 
   aprobarSolicitud(id: number | string, observacion = '') {
     return this.http.patch<BackendSolicitud>(`${this.apiUrl}/solicitudes/${id}/aprobar`, {
-      aprobadoPor: 'rrhh-admin',
       observacion,
     });
   }
@@ -136,10 +157,14 @@ interface BackendEmpleado {
 
 interface BackendSolicitud {
   id: string;
+  empleadoId?: number;
+  empleadoNombre?: string;
+  empleadoActivo?: boolean;
+  valoresAnteriores?: Record<string, unknown>;
+  catalogosSolicitados?: { funcion?: string; reparticion?: string };
   tipo: string;
   estado: string;
   creadoEn?: string;
-  legajo?: string;
   cambios?: Record<string, unknown>;
 }
 

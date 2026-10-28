@@ -1,5 +1,4 @@
 import { Module } from '@nestjs/common';
-import { PassportModule } from '@nestjs/passport';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from '../auth/auth.module.js';
 import { Empleado } from './entities/empleado.entity.js';
@@ -9,7 +8,7 @@ import { EmpleadosController } from './empleados.controller.js';
 import { EmpleadosService } from './empleados.service.js';
 
 @Module({
-  imports: [PassportModule, AuthModule, TypeOrmModule.forFeature([Empleado, Funcion, Reparticion])],
+  imports: [AuthModule, TypeOrmModule.forFeature([Empleado, Funcion, Reparticion])],
   controllers: [EmpleadosController],
   providers: [EmpleadosService],
   exports: [EmpleadosService],

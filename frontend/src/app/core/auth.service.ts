@@ -1,6 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { tap } from 'rxjs';
+import { map, tap } from 'rxjs';
 
 export interface AuthUser {
   id: number | null;
@@ -9,45 +9,42 @@ export interface AuthUser {
   rol: number | string | null;
 }
 
-interface LoginResponse {
-  access_token: string;
-  user: AuthUser;
-}
-
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private readonly http = inject(HttpClient);
-  private readonly apiUrl = 'http://localhost:3000/api';
-  private readonly tokenKey = 'concordia_token';
-  private readonly userKey = 'concordia_user';
+  private accessToken: string | null = null;
+  private user: AuthUser | null = null;
+  private authorized = false;
 
-  login(email: string, password: string) {
-    return this.http.post<LoginResponse>(`${this.apiUrl}/auth/login`, { email, password }).pipe(
+  login(token: string) {
+    const accessToken = token.trim();
+    return this.http.get<{ user: AuthUser }>('/api/auth/profile', {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    }).pipe(
+      map((response) => ({ access_token: accessToken, user: response.user })),
       tap((response) => {
-        localStorage.setItem(this.tokenKey, response.access_token);
-        localStorage.setItem(this.userKey, JSON.stringify(response.user));
+        this.accessToken = response.access_token;
+        this.user = response.user;
+        this.authorized = true;
       }),
     );
   }
 
   get token(): string | null {
-    return localStorage.getItem(this.tokenKey);
+    return this.accessToken;
   }
 
   get currentUser(): AuthUser | null {
-    const value = localStorage.getItem(this.userKey);
-    if (!value) return null;
+    return this.user;
+  }
 
-    try {
-      return JSON.parse(value) as AuthUser;
-    } catch {
-      this.logout();
-      return null;
-    }
+  get isAuthorized() {
+    return this.authorized;
   }
 
   logout() {
-    localStorage.removeItem(this.tokenKey);
-    localStorage.removeItem(this.userKey);
+    this.accessToken = null;
+    this.user = null;
+    this.authorized = false;
   }
 }

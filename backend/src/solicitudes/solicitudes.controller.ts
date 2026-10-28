@@ -5,6 +5,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard.js';
@@ -21,8 +22,13 @@ export class SolicitudesController {
   @Get()
   @UseGuards(RolesGuard)
   @Roles('RRHH')
-  findAll() {
-    return this.solicitudesService.findAll();
+  findAll(@Query('estado') estado = 'pendiente') {
+    return this.solicitudesService.findAll(estado);
+  }
+
+  @Get('catalogos')
+  catalogos() {
+    return this.solicitudesService.findCatalogos();
   }
 
   @Get(':id')
@@ -33,14 +39,24 @@ export class SolicitudesController {
   }
 
   @Post()
-  create(@Body() body: CreateSolicitudDto, @User('id') userId: string | number | null) {
+  create(
+    @Body() body: CreateSolicitudDto,
+    @User('id') userId: string | number | null,
+  ) {
     return this.solicitudesService.create(body, userId);
   }
 
   @Patch(':id/aprobar')
   @UseGuards(RolesGuard)
   @Roles('RRHH')
-  aprobar(@Param('id') id: string, @Body() body: any) {
-    return this.solicitudesService.aprobar(id, body);
+  aprobar(
+    @Param('id') id: string,
+    @Body() body: any,
+    @User('id') userId: string | number | null,
+  ) {
+    return this.solicitudesService.aprobar(id, {
+      ...body,
+      aprobadoPor: userId,
+    });
   }
 }

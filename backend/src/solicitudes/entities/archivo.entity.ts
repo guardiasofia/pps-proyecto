@@ -11,7 +11,12 @@ export class Archivo {
   @Column({ name: 'tipoarchivo', type: 'varchar', length: 100, nullable: true })
   tipoArchivo?: string;
 
-  @Column({ name: 'nombrearchivo', type: 'varchar', length: 255, nullable: true })
+  @Column({
+    name: 'nombrearchivo',
+    type: 'varchar',
+    length: 255,
+    nullable: true,
+  })
   nombreArchivo?: string;
 
   @Column({ name: 'fechacarga', type: 'date', nullable: true })

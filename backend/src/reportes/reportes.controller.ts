@@ -9,23 +9,16 @@ import { ReportesService } from './reportes.service.js';
 export class ReportesController {
   constructor(private readonly reportesService: ReportesService) {}
 
-  @Get('empleado/:id')
-  @UseGuards(RolesGuard)
-  @Roles('RRHH')
-  generarReporteEmpleado(@Param('id') id: string, @Res() res: Response) {
-    const pdf = this.reportesService.generarReporteEmpleado(id);
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="reporte-${id}.pdf"`);
-    return res.send(pdf);
-  }
-
   @Get('solicitud/:id/pdf')
   @UseGuards(RolesGuard)
   @Roles('RRHH')
-  generarReporteSolicitud(@Param('id') id: string, @Res() res: Response) {
-    const pdf = this.reportesService.generarReporteSolicitud(id);
+  async generarReporteSolicitud(@Param('id') id: string, @Res() res: Response) {
+    const pdf = await this.reportesService.generarReporteSolicitud(id);
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="solicitud-${id}.pdf"`);
+    res.setHeader(
+      'Content-Disposition',
+      `inline; filename="solicitud-${id}.pdf"`,
+    );
     return res.send(pdf);
   }
 }
