@@ -1,4 +1,11 @@
-# PPS Concordia
+<<<<<<< README.md
+
+=======
+# 📚 Sistema de Autogestión de Datos - PPS
+
+Proyecto de **Práctica Profesional Supervisada** de la Licenciatura en Sistemas (UNER).  
+El objetivo es desarrollar un sistema web para la **Municipalidad de Concordia** que permita la autogestión de actualización de datos de empleados, con validación y aprobación por parte de Recursos Humanos.
+
 
 Portal Angular y API NestJS para solicitudes de actualización de legajos, aprobación de RRHH e integración con PostgreSQL.
 
@@ -53,3 +60,5 @@ npm run build
 cd frontend
 npm run build
 ```
+
+>>>>>>> README.md
