@@ -5,7 +5,7 @@ services:
     restart: always
     environment:
       POSTGRES_USER: pps_user
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-change-me-local}
+      POSTGRES_PASSWORD: pps_password
       POSTGRES_DB: pps_db
     ports:
       - "127.0.0.1:5432:5432"

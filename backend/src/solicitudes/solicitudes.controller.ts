@@ -11,7 +11,10 @@ import {
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard.js';
 import { Roles, RolesGuard } from '../common/guards/roles.guard.js';
 import { User } from '../common/decorators/user.decorator.js';
-import { CreateSolicitudDto } from './dto/create-solicitud.dto.js';
+import {
+  AprobarSolicitudDto,
+  CreateSolicitudDto,
+} from './dto/create-solicitud.dto.js';
 import { SolicitudesService } from './solicitudes.service.js';
 
 @Controller('solicitudes')
@@ -51,7 +54,7 @@ export class SolicitudesController {
   @Roles('RRHH')
   aprobar(
     @Param('id') id: string,
-    @Body() body: any,
+    @Body() body: AprobarSolicitudDto,
     @User('id') userId: string | number | null,
   ) {
     return this.solicitudesService.aprobar(id, {

@@ -204,7 +204,11 @@ export class SolicitudesService {
         'El token no contiene un identificador de usuario válido',
       );
     }
-    const cambios = data?.cambios ?? {};
+    const cambios: Record<string, unknown> = Object.fromEntries(
+      Object.entries(data?.cambios ?? {}).filter(
+        ([, valor]) => valor !== undefined,
+      ),
+    );
     const camposEnviados = Object.keys(cambios);
     const camposInvalidos = camposEnviados.filter(
       (campo) =>

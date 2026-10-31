@@ -1,65 +1,55 @@
-import { Type } from 'class-transformer';
 import {
+  ArrayMaxSize,
+  ArrayMinSize,
   IsArray,
   IsBoolean,
-  IsEmail,
-  IsIn,
-  IsNotEmpty,
-  IsOptional,
-  Matches,
-  MinLength,
-  MaxLength,
-  IsString,
-  ValidateNested,
   IsDateString,
+  IsIn,
   IsInt,
+  IsOptional,
+  IsString,
+  Matches,
+  MaxLength,
+  MinLength,
+  Min,
+  ValidateNested,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 
-const ESTADOS_CIVILES = [
-  'Soltero/a',
-  'Casado/a',
-  'Divorciado/a',
-  'Viudo/a',
-  'Separado/a',
-  'Unión convivencial',
-] as const;
+const TELEFONO = /^[+]?[(]?\d[\d\s().-]{6,18}\d$/;
 
 export class FamiliarDto {
   @IsString()
-  @IsNotEmpty()
-  @MaxLength(120)
-  apellidos!: string;
+  @MinLength(1)
+  @MaxLength(255)
+  apellidos: string;
 
   @IsString()
-  @IsNotEmpty()
-  @MaxLength(120)
-  nombres!: string;
+  @MinLength(1)
+  @MaxLength(255)
+  nombres: string;
 
-  @IsString()
   @IsIn(['DNI', 'LC', 'LE', 'CI', 'Pasaporte'])
-  tipoDocumento!: string;
+  tipoDocumento: string;
 
   @IsString()
   @Matches(/^[A-Za-z0-9.-]{3,20}$/)
-  numeroDocumento!: string;
+  numeroDocumento: string;
 
-  @IsString()
   @IsIn(['F', 'M', 'X'])
-  sexo!: string;
+  sexo: string;
 
   @IsDateString()
-  fechaNacimiento!: string;
+  fechaNacimiento: string;
 
   @IsString()
-  @IsNotEmpty()
-  @MaxLength(80)
-  vinculo!: string;
+  @MinLength(1)
+  @MaxLength(50)
+  vinculo: string;
 
   @IsOptional()
   @IsString()
-  @Matches(/^[+]?[(]?\d[\d\s().-]{6,18}\d$/, {
-    message: 'El teléfono del familiar no tiene un formato válido',
-  })
+  @Matches(TELEFONO)
   telefono?: string;
 
   @IsOptional()
@@ -67,71 +57,68 @@ export class FamiliarDto {
   discapacitado?: boolean;
 }
 
+/** Datos del legajo que un empleado puede pedir modificar. */
 export class SolicitudDatosDto {
   @IsOptional()
   @IsString()
-  @IsNotEmpty()
   @MinLength(5)
   @MaxLength(255)
   domicilio?: string;
 
   @IsOptional()
   @IsString()
-  @Matches(/^[+]?[(]?\d[\d\s().-]{6,18}\d$/, {
-    message: 'El teléfono no tiene un formato válido',
-  })
+  @Matches(TELEFONO)
   telefono?: string;
 
   @IsOptional()
   @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(2)
   @IsString({ each: true })
+  @Matches(TELEFONO, { each: true })
   telefonos?: string[];
 
   @IsOptional()
-  @IsEmail()
+  @IsString()
+  @MaxLength(255)
   correoElectronico?: string;
 
   @IsOptional()
-  @IsEmail()
+  @IsString()
+  @MaxLength(255)
   email?: string;
 
   @IsOptional()
-  @Type(() => Number)
   @IsInt()
+  @Min(1)
   reparticion?: number;
 
   @IsOptional()
-  @IsIn(ESTADOS_CIVILES)
+  @IsInt()
+  @Min(1)
+  funcion?: number;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
   estadoCivil?: string;
 
   @IsOptional()
   @IsArray()
+  @ArrayMinSize(1)
   @ValidateNested({ each: true })
   @Type(() => FamiliarDto)
   familiares?: FamiliarDto[];
 
   @IsOptional()
   @IsString()
-  @Matches(/^data:image\/(jpeg|jpg|png|webp);base64,[a-z0-9+/=]+$/i, {
-    message: 'La foto debe ser una imagen JPG, PNG o WEBP válida',
-  })
+  @MaxLength(7_000_000)
   foto?: string;
 
   @IsOptional()
   @IsString()
-  @Matches(
-    /^data:(image\/(jpeg|jpg|png|webp)|application\/pdf);base64,[a-z0-9+/=]+$/i,
-    {
-      message:
-        'El certificado debe ser una imagen JPG, PNG, WEBP o un PDF válido',
-    },
-  )
+  @MaxLength(7_000_000)
   certificadoDiscapacidad?: string;
-
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  funcion?: number;
 
   @IsOptional()
   @IsBoolean()
@@ -139,15 +126,14 @@ export class SolicitudDatosDto {
 }
 
 export class CreateSolicitudDto {
-  @IsOptional()
-  @IsString()
-  empleadoId?: string;
-
-  @IsOptional()
-  @IsString()
-  legajo?: string;
-
   @ValidateNested()
   @Type(() => SolicitudDatosDto)
-  cambios!: SolicitudDatosDto;
+  cambios: SolicitudDatosDto;
+}
+
+export class AprobarSolicitudDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  observacion?: string;
 }

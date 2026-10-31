@@ -12,6 +12,6 @@ describe('AuthService', () => {
         roles: ['RRHH'],
         userName: 'María',
       }),
-    ).toMatchObject({ id: 42, rol: 'RRHH', username: 'María' });
+    ).toMatchObject({ id: '42', rol: 'RRHH', username: 'María' });
   });
 });

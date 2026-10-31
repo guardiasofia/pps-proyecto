@@ -8,6 +8,6 @@ import { JwtStrategy } from './strategies/jwt.strategy.js';
   imports: [PassportModule.register({ defaultStrategy: 'jwt' })],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy],
-  exports: [AuthService],
+  exports: [AuthService, PassportModule],
 })
 export class AuthModule {}

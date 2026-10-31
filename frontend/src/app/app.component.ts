@@ -1,8 +1,7 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, inject } from '@angular/core';
-import { ActivatedRoute, NavigationEnd, Router, RouterOutlet } from '@angular/router';
+import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { filter, forkJoin, of } from 'rxjs';
+import { forkJoin, of } from 'rxjs';
 import { AuthService } from './core/auth.service';
 import { Empleado, FichaEmpleado, Familiar, MunicipalService, Solicitud, SolicitudCatalogos } from './core/municipal.service';
 import { LoginComponent } from './auth/login.component';
@@ -12,13 +11,12 @@ import { HrViewComponent } from './hr/hr-view.component';
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterOutlet, LoginComponent, EmployeeViewComponent, HrViewComponent],
+  imports: [CommonModule, FormsModule, LoginComponent, EmployeeViewComponent, HrViewComponent],
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss'
 })
-export class AppComponent implements OnInit {
+export class AppComponent {
   private readonly municipalService = inject(MunicipalService);
-  private readonly router = inject(Router);
   readonly authService = inject(AuthService);
   activeSection = 'Resumen';
   search = '';
@@ -42,8 +40,6 @@ export class AppComponent implements OnInit {
   readingFile = false;
   showRequestForm = false;
   loading = true;
-  loginToken = '';
-  loginError = '';
   apiError = '';
   approvalError = '';
   approvingId: number | string | null = null;
@@ -55,24 +51,6 @@ export class AppComponent implements OnInit {
   employeeProfile: FichaEmpleado | null = null;
   readonly tiposDocumento = ['DNI', 'LC', 'LE', 'CI', 'Pasaporte'];
   readonly sexos = [{ value: 'F', label: 'Femenino' }, { value: 'M', label: 'Masculino' }, { value: 'X', label: 'Otro / no especificado' }];
-
-  ngOnInit() {
-    this.router.events.pipe(filter((event) => event instanceof NavigationEnd)).subscribe(() => {
-      const segments = this.router.url.split('?')[0].split('/').filter(Boolean);
-      this.activeSection = segments[0] === 'rrhh' ? this.titleCase(segments[1] ?? 'Resumen') : segments[0] === 'empleado' ? 'Inicio' : 'Login';
-      if (this.isAuthenticated && segments[0] !== 'login') this.refresh();
-    });
-    if (this.isAuthenticated) {
-      this.loadSolicitudCatalogos();
-      void this.router.navigate([this.isBackOffice ? '/rrhh/Resumen' : '/empleado']);
-    } else {
-      void this.router.navigate(['/login']);
-    }
-  }
-
-  private titleCase(value: string) {
-    return value.charAt(0).toUpperCase() + value.slice(1);
-  }
 
   loadSolicitudCatalogos() {
     this.municipalService.getCatalogosSolicitud().subscribe({
@@ -136,32 +114,26 @@ export class AppComponent implements OnInit {
   }
 
   get navItems() {
-    return this.isBackOffice
-      ? [
-          { label: 'Resumen', section: 'Resumen' },
-          { label: 'Solicitudes', section: 'Solicitudes' },
-          { label: 'Personal', section: 'Personal' },
-          { label: 'Reportes', section: 'Reportes' },
-        ]
-      : [{ label: 'Inicio', section: 'Inicio' }];
+    return this.isBackOffice ? ['Resumen', 'Solicitudes', 'Personal', 'Reportes'] : ['Inicio'];
   }
+
+  readonly changeEntries = (request: Solicitud) => this.getRequestChangeEntries(request);
 
   get initials() {
     return this.currentUserName.split(' ').map((part) => part.charAt(0)).join('').slice(0, 2).toUpperCase();
   }
 
-  login() {
-    if (!this.loginToken.trim()) return;
-    this.loginError = '';
-    this.authService.login(this.loginToken).subscribe({
-      next: () => {
-        this.loginToken = '';
-        this.activeSection = this.isBackOffice ? 'Resumen' : 'Inicio';
-        this.loadSolicitudCatalogos();
-        this.refresh();
-      },
-      error: () => { this.loginError = 'El token no es válido o expiró. Solicitá uno vigente al proveedor de identidad.'; },
-    });
+  onLoggedIn() {
+    this.activeSection = this.isBackOffice ? 'Resumen' : 'Inicio';
+    this.apiError = '';
+    this.loadSolicitudCatalogos();
+    this.refresh();
+  }
+
+  setSection(section: string) {
+    if (!this.isBackOffice) return;
+    this.activeSection = section;
+    this.refresh();
   }
 
   logout() {
@@ -169,6 +141,9 @@ export class AppComponent implements OnInit {
     this.employees = [];
     this.requests = [];
     this.employeeProfile = null;
+    this.activeSection = 'Resumen';
+    this.showRequestForm = false;
+    this.pendingChanges = {};
   }
 
   get filteredEmployees() {
@@ -263,24 +238,6 @@ export class AppComponent implements OnInit {
     return Array.isArray(value) ? value.join(', ') : String(value);
   }
 
-  navigate(section: string) {
-    if (!this.isBackOffice) {
-      void this.router.navigate(['/empleado']);
-      return;
-    }
-    void this.router.navigate(['/rrhh', section]);
-  }
-
-  onAuthenticate(token: string) {
-    this.authService.login(token).subscribe({
-      next: () => {
-        this.loadSolicitudCatalogos();
-        void this.router.navigate([this.isBackOffice ? '/rrhh/Resumen' : '/empleado']);
-      },
-      error: () => this.loginView?.setError('El token no es válido o expiró. Solicitá uno vigente al proveedor de identidad.'),
-    });
-  }
-
   changeRequestField(field: string) {
     this.requestField = field;
     this.requestValue = '';
@@ -296,6 +253,8 @@ export class AppComponent implements OnInit {
     this.poseeCud = null;
     this.requestFile = null;
     this.fileError = '';
+    document.querySelectorAll<HTMLInputElement>('.modal input[type="file"]').forEach((input) => { input.value = ''; });
+
   }
 
   approveRequest(request: Solicitud) {

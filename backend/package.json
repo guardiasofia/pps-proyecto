@@ -19,7 +19,10 @@
     "test:watch": "vitest",
     "test:cov": "vitest run --coverage",
     "test:debug": "vitest --inspect-brk --no-file-parallelism",
-    "test:e2e": "vitest run --config ./vitest.config.e2e.ts"
+    "test:e2e": "vitest run --config ./vitest.config.e2e.ts",
+    "token:rrhh": "node scripts/dev-token.mjs rrhh",
+    "token:empleado": "node scripts/dev-token.mjs empleado",
+    "token:ana": "node scripts/dev-token.mjs ana"
   },
   "dependencies": {
     "@nestjs/common": "^12.0.1",
