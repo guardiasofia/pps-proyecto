@@ -174,7 +174,7 @@ Todos usan prefijo global `/api`. Los endpoints, salvo health, requieren JWT.
 
 La entidad TypeORM `Solicitud` mapea `solicitudes`: `id` UUID textual, `empleado_id`, tipo, estado, `cambios`/`valores_anteriores` JSONB, fecha de creación y metadatos de aprobación o rechazo (actor, fecha, observación/motivo). `empleado_id` referencia `empleados(legajo)`. El estado inicial es `pendiente`; el servicio lo transiciona a `aprobada` o `rechazada`.
 
-La relación completa figura en `pps_db.sql`, `backend/migrations/001_create_solicitudes.sql` y `003_add_rejection_details.sql`.
+La relación completa figura en `pps_db.sql` y las migraciones `backend/migrations/001_create_solicitudes.sql` a `004_normalize_catalogos.sql`.
 
 ## Flujo completo de una solicitud
 
@@ -287,14 +287,6 @@ sequenceDiagram
 - Se devuelven errores HTTP de validación/autorización/ausencia; algunos errores de persistencia se traducen a mensajes de negocio.
 - No se documenta aquí una política completa de auditoría, retención, cifrado en reposo, backup, rate limiting, monitoreo o gestión de secretos productiva: deben definirse antes de exposición real.
 
-## Inconsistencias y límites encontrados
+### Normalización de catálogos
 
-- El README previo tenía marcadores de conflicto y decía copiar `backend/.env.example`, archivo ausente.
-- El README previo indicaba `DB_PASSWORD=change-me-local`; Compose define `POSTGRES_PASSWORD=pps_password`.
-- El README previo presentaba pgAdmin y PostgreSQL en Docker, pero no dejaba claro que API/frontend corren en el host; esta versión aclara el alcance.
-- El README de backend también tenía instrucciones duplicadas y valores/configuración desactualizados; se reemplazó por instrucciones alineadas con los scripts actuales.
-- `app.config.ts` declara `API_PREFIX`, pero `main.ts` establece directamente `/api`; el prefijo efectivo es `/api`.
-- Existen guards Angular, pero no se configura Router en la aplicación actual.
-- `common/validators/file.validator.ts` no es el validador usado por el endpoint de solicitudes; el servicio valida los Data URL y sus firmas directamente.
-- El archivo SQL base tiene entidades adicionales de legajo (estudios, CUD, familiares) no editables directamente desde la pantalla de ficha; las modificaciones disponibles pasan por solicitudes.
-- La sección **Personal** del screenshot recibido como `Ventana-Personal-RRHH.png` muestra la misma vista de exportación que la captura de **Reportes**; se conserva una sola copia como `reportes-rrhh.png`.
+Las funciones y los parentescos se muestran tal como los entrega `GET /api/solicitudes/catalogos`. La semilla compara nombres sin distinguir acentos y la migración `004_normalize_catalogos.sql` normaliza registros existentes, consolida duplicados (incluido `Cónyuge`/`Conyuge`), repara las referencias de empleados y familiares, y guarda las etiquetas sin acentos para evitar problemas de codificación en la interfaz.
