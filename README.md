@@ -32,7 +32,7 @@ Los cambios que pueden solicitarse incluyen domicilio, teléfonos, correo electr
 ```mermaid
 flowchart LR
     U[Empleado o RRHH] -->|Navegador| FE[Angular]
-    FE -->|HTTP /api + Bearer JWT| API[NestJS]
+    FE -->|HTTP /api + JWT| API[NestJS]
     IDP[Proveedor externo de identidad] -->|Emite JWT| U
     API -->|TypeORM y consultas SQL| DB[(PostgreSQL)]
     API -->|PDF de solicitud| PDF[PDFKit]
@@ -88,7 +88,7 @@ El proveedor de identidad emite el token; el usuario lo presenta y el backend ve
    docker compose up -d postgres pgadmin
    ```
 
-   En la primera inicialización del volumen, Compose ejecuta `pps_db.sql` y las tres migraciones en orden. Los scripts de inicialización no se vuelven a ejecutar en volúmenes ya creados.
+   En la primera inicialización del volumen, Compose ejecuta `pps_db.sql` y las cuatro migraciones en orden. Los scripts de inicialización no se vuelven a ejecutar en volúmenes ya creados.
 
 3. Crear `backend/.env` manualmente. El repositorio **no contiene** `backend/.env.example`. Ejemplo para desarrollo:
 
@@ -147,6 +147,8 @@ La tabla de variables, despliegue completo, operación con la base y solución d
 
 El archivo `docker-compose.yml` **no construye ni ejecuta imágenes del frontend o backend**. Solo inicia PostgreSQL 15 y pgAdmin. La aplicación se inicia con npm en el host, como en los pasos anteriores. Puertos 5432 y 8080 se publican en loopback (`127.0.0.1`).
 
+![Contenedores locales](docs/img/docker-containers.png)
+
 ```powershell
 docker compose up -d postgres pgadmin
 docker compose ps
@@ -194,7 +196,7 @@ Content-Type: application/json
 
 ## Capturas
 
-Las imágenes entregadas se copiaron a `docs/img/`; véanse [docs/CAPTURAS.md](docs/CAPTURAS.md) para el inventario, la descripción, la ubicación sugerida y las capturas todavía pendientes. Antes de publicar, anonimizar datos personales visibles en las imágenes.
+Las imágenes originales se conservan en `docs/img/`; véanse [docs/CAPTURAS.md](docs/CAPTURAS.md) para el inventario y la ubicación sugerida. Los nombres, correos, legajos, fechas, identificadores y motivos visibles en las capturas del sistema son datos ficticios inventados para demostración. En la captura de la consola del frontend se ocultó únicamente la ruta local que identificaba al usuario del equipo; las capturas que mostraban JWT completos no se incluyeron porque los tokens son credenciales.
 
 ### Acceso
 
@@ -203,6 +205,8 @@ Las imágenes entregadas se copiaron a `docs/img/`; véanse [docs/CAPTURAS.md](d
 ### Portal del empleado
 
 ![Inicio del portal del empleado](docs/img/inicio-empleado.png)
+
+![Formulario de nueva solicitud](docs/img/nueva-solicitud.png)
 
 ### Gestión de RRHH
 
@@ -214,20 +218,17 @@ Las imágenes entregadas se copiaron a `docs/img/`; véanse [docs/CAPTURAS.md](d
 - El empleado puede ver su ficha y enviar solicitudes, pero no dispone de una pantalla de historial/estado de sus presentaciones.
 - El Compose actual no empaqueta frontend ni backend y no define una topología de producción.
 - La carga de archivos se guarda en PostgreSQL (`bytea`); conviene evaluar almacenamiento de objetos para un uso de mayor volumen.
-- Las capturas recibidas incluyen datos identificatorios de ejemplo y deben anonimizarse antes de una difusión pública.
-- El README anterior contenía marcadores de conflicto y describía un `.env.example` inexistente y una contraseña de PostgreSQL distinta a Compose; esta versión corrige esos puntos.
 
-## Trabajo futuro (no implementado)
+## Trabajo futuro (no implementado aún)
 
 - Agregar historial y consulta de estado de solicitudes para el empleado.
-- Definir imágenes Docker, servidor web/proxy y pipeline de despliegue con secretos gestionados.
+- Realización de Login con usuario y contraseña.
 - Incorporar pruebas de interfaz y pruebas visuales automatizadas.
-- Evaluar almacenamiento de archivos separado de la base de datos, auditoría operativa y políticas de retención.
-- Completar autoría institucional y reemplazar capturas con datos anonimizados.
+- Más funcionalidades, opciones.
 
 ## Autoría
 
-Proyecto de PPS de la Licenciatura en Sistemas (UNER). El autor/equipo no está identificado en los metadatos del repositorio: completar este apartado con los nombres y datos académicos antes de la entrega.
+Proyecto de PPS de la Licenciatura en Sistemas (UNER). Realizado por Sofía Belén Guardia, estudiante avanzada de la carrera.
 
 ## Documentación
 

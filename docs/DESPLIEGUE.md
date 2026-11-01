@@ -57,8 +57,9 @@ La primera inicialización de `postgres_data` ejecuta, en este orden:
 2. `backend/migrations/001_create_solicitudes.sql`: tabla de solicitudes y columnas complementarias.
 3. `backend/migrations/002_seed_catalogos.sql`: catálogos iniciales.
 4. `backend/migrations/003_add_rejection_details.sql`: datos de rechazo.
+5. `backend/migrations/004_normalize_catalogos.sql`: elimina acentos y consolida funciones/parentescos duplicados conservando sus referencias.
 
-La imagen oficial ejecuta scripts de `/docker-entrypoint-initdb.d` solamente cuando inicializa un directorio de datos vacío. Si el volumen ya existe, actualizar los archivos SQL no vuelve a ejecutar las migraciones. Para una base existente, realizar copia de seguridad y aplicar manualmente cada migración pendiente con `psql` en el orden indicado; no eliminar el volumen como método de actualización.
+La imagen oficial ejecuta scripts de `/docker-entrypoint-initdb.d` solamente cuando inicializa un directorio de datos vacío. Si el volumen ya existe, actualizar los archivos SQL no vuelve a ejecutar las migraciones. Para una base existente, realizar copia de seguridad y aplicar manualmente cada migración pendiente con `psql` en el orden indicado, incluida `004_normalize_catalogos.sql` para normalizar datos ya cargados; no eliminar el volumen como método de actualización.
 
 Para conectarse desde pgAdmin, crear un servidor con host `postgres`, puerto `5432`, base `pps_db`, usuario `pps_user` y la contraseña definida en `docker-compose.yml`. Desde el host, el host de base de datos es `localhost`.
 
@@ -68,7 +69,7 @@ Para conectarse desde pgAdmin, crear un servidor con host `postgres`, puerto `54
 
 1. Crear la base `pps_db` y un usuario con permisos sobre ella.
 2. Cargar `pps_db.sql`.
-3. Aplicar una sola vez, en orden, las migraciones `backend/migrations/001...`, `002...` y `003...`.
+3. Aplicar una sola vez, en orden, las migraciones `backend/migrations/001...` a `004...`.
 4. Configurar `DB_HOST`, `DB_PORT`, `DB_USERNAME`, `DB_PASSWORD` y `DB_NAME` en el entorno de la API.
 5. Confirmar conectividad desde el host donde se ejecutará NestJS.
 
@@ -142,6 +143,8 @@ npm run start:prod
 
 `npm run start:prod` ejecuta `node dist/main`. En producción se debe configurar CORS, la base y JWT antes de arrancar; no existe un gestor de procesos o servicio de sistema incluido.
 
+![Backend ejecutándose](img/backend-corriendo.png)
+
 ### JWT de prueba (solo entorno local)
 
 Con `JWT_SECRET` en `backend/.env` y una base con los registros que correspondan:
@@ -180,6 +183,8 @@ npm start
 
 Abrir `http://localhost:4200`. `src/proxy.conf.json` reenvía las solicitudes `/api` a `http://localhost:3000`; el proxy es parte del servidor Angular de desarrollo.
 
+![Frontend ejecutándose](img/frontend-corriendo.png)
+
 ## Docker
 
 ### docker compose
@@ -191,6 +196,8 @@ docker compose up -d postgres pgadmin
 docker compose ps
 docker compose logs -f postgres
 ```
+
+![PostgreSQL y pgAdmin activos en Docker Desktop](img/docker-containers.png)
 
 `docker compose down` detiene los servicios, pero conserva el volumen nombrado. Evitar `docker compose down -v` salvo que se haya decidido explícitamente borrar los datos persistidos.
 

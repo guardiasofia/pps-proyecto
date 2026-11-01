@@ -15,6 +15,7 @@ services:
       - ./backend/migrations/001_create_solicitudes.sql:/docker-entrypoint-initdb.d/02-solicitudes.sql:ro
       - ./backend/migrations/002_seed_catalogos.sql:/docker-entrypoint-initdb.d/03-catalogos.sql:ro
       - ./backend/migrations/003_add_rejection_details.sql:/docker-entrypoint-initdb.d/04-rejection-details.sql:ro
+      - ./backend/migrations/004_normalize_catalogos.sql:/docker-entrypoint-initdb.d/05-normalize-catalogos.sql:ro
 
   pgadmin:
     image: dpage/pgadmin4

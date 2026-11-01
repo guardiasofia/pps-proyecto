@@ -23,13 +23,13 @@ FROM (VALUES
     (4, 'Chofer'),
     (5, 'Guardavida'),
     (6, 'Guardaparques'),
-    (7, 'Guía Turístico'),
+    (7, 'Guia Turistico'),
     (8, 'Inspector'),
     (9, 'Profesional de la Salud'),
     (10, 'Docente'),
-    (11, 'Profesional Informático'),
+    (11, 'Profesional Informatico'),
     (12, 'Profesional en general'),
-    (13, 'Técnico en general'),
+    (13, 'Tecnico en general'),
     (14, 'Personal de Seguridad'),
     (15, 'Cajero'),
     (16, 'Juez'),
@@ -37,12 +37,17 @@ FROM (VALUES
     (18, 'Concejal')
 ) AS catalogo(orden, nombre)
 CROSS JOIN (SELECT COALESCE(MAX(idfuncion), 0) AS max_id FROM public.funciones) AS base
-WHERE NOT EXISTS (SELECT 1 FROM public.funciones WHERE funcion = catalogo.nombre);
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM public.funciones
+    WHERE lower(btrim(translate(funcion, 'áéíóúüñÁÉÍÓÚÜÑ', 'aeiouunAEIOUUN'))) =
+          lower(btrim(translate(catalogo.nombre, 'áéíóúüñÁÉÍÓÚÜÑ', 'aeiouunAEIOUUN')))
+);
 
 INSERT INTO public.parentesco (parentesco, fechamod, usuariomod)
 SELECT vinculo.nombre, CURRENT_TIMESTAMP, 1
 FROM (VALUES
-    ('Cónyuge'),
+    ('Conyuge'),
     ('Hermano/a'),
     ('Abuelo/a'),
     ('Nieto/a'),
@@ -50,4 +55,9 @@ FROM (VALUES
     ('Padre/Madre'),
     ('Hijo/a')
 ) AS vinculo(nombre)
-WHERE NOT EXISTS (SELECT 1 FROM public.parentesco WHERE parentesco = vinculo.nombre);
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM public.parentesco
+    WHERE lower(btrim(translate(parentesco, 'áéíóúüñÁÉÍÓÚÜÑ', 'aeiouunAEIOUUN'))) =
+          lower(btrim(translate(vinculo.nombre, 'áéíóúüñÁÉÍÓÚÜÑ', 'aeiouunAEIOUUN')))
+);
