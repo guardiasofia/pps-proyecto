@@ -158,6 +158,42 @@ describe('SolicitudesService', () => {
     expect(solicitudRepository.save).toHaveBeenCalledOnce();
   });
 
+  it('rechaza una solicitud pendiente sin aplicar cambios y persiste el motivo', async () => {
+    const { service, empleado, solicitudRepository } = crearServicio({
+      cambios: { estadoCivil: 'Casado/a' },
+    });
+
+    const result = await service.rechazar('solicitud-1', {
+      rechazadoPor: '1',
+      motivo: '  Falta documentación  ',
+    });
+
+    expect(result).toMatchObject({
+      estado: 'rechazada',
+      rechazadoPor: '1',
+      motivoRechazo: 'Falta documentación',
+    });
+    expect(empleado.estadocivil).toBe('Soltero/a');
+    expect(solicitudRepository.save).toHaveBeenCalledOnce();
+  });
+
+  it('no rechaza una solicitud sin motivo o sin identidad de RRHH', async () => {
+    const { service, dataSource } = crearServicio();
+
+    await expect(
+      service.rechazar('solicitud-1', {
+        rechazadoPor: '1',
+        motivo: '   ',
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    await expect(
+      service.rechazar('solicitud-1', {
+        motivo: 'Falta documentación',
+      }),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+    expect(dataSource.transaction).not.toHaveBeenCalled();
+  });
+
   it('completa crear → aprobar → verificar el estado persistido del legajo', async () => {
     const storedRequests: Solicitud[] = [];
     const storedEmployee = { legajo: 1002, estadocivil: 'Soltero/a' };

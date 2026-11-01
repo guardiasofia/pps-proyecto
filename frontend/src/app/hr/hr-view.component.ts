@@ -23,10 +23,24 @@ import { Empleado, Solicitud } from '../core/municipal.service';
     } @else if (section() === 'Personal') {
       <section class="panel directory-panel"><div class="panel-heading"><div><p class="eyebrow">Directorio municipal</p><h2>Personal</h2></div><div class="search-box"><span>⌕</span><input [ngModel]="search()" (ngModelChange)="searchChange.emit($event)" placeholder="Buscar por nombre o área" /></div></div><div class="table-wrap"><table><thead><tr><th>PERSONA</th><th>REPARTICIÓN</th><th>FUNCIÓN</th><th>ESTADO</th></tr></thead><tbody>@for (employee of filteredEmployees(); track employee.id) {<tr><td><div class="person-cell"><div class="mini-avatar">{{ employee.nombre.charAt(0) }}{{ employee.apellido.charAt(0) }}</div><strong>{{ employee.nombre }} {{ employee.apellido }}</strong></div></td><td>{{ employee.reparticion }}</td><td>{{ employee.funcion }}</td><td><span class="tag active-tag">{{ employee.estado }}</span></td></tr>}</tbody></table></div></section>
     } @else if (section() === 'Solicitudes') {
-      <section class="panel directory-panel inbox-panel"><div class="panel-heading"><div><p class="eyebrow">Bandeja de RRHH</p><h2>Solicitudes pendientes</h2><p class="inbox-summary">Revisá los cambios antes de aprobarlos.</p></div><button class="refresh-button" (click)="refresh.emit()"><span aria-hidden="true">↻</span> Actualizar</button></div>@if (approvalError()) { <p class="form-error">{{ approvalError() }}</p> }<div class="request-list request-inbox">@for (request of requests(); track request.id) {<article class="request-row"><div class="request-symbol" aria-hidden="true">↻</div><div class="request-copy"><strong>{{ request.empleadoNombre || 'Empleado' }}</strong><span class="request-id">{{ request.solicitante }} · {{ request.empleadoActivo ? 'Activo' : 'Inactivo' }} · #{{ request.id }}</span></div><div class="request-changes"><span class="changes-label">Datos a modificar</span>@for (change of changeEntries()(request); track change.label) {<span><b>{{ change.label }}</b>{{ change.value }}</span>}</div><div class="request-meta"><span class="request-date"><span aria-hidden="true">◷</span> {{ request.fecha }}</span><span class="tag"><span aria-hidden="true">!</span> {{ request.estado }}</span><button class="approve-button" [disabled]="approvingId() === request.id" (click)="approve.emit(request)"><span aria-hidden="true">✓</span> {{ approvingId() === request.id ? 'Aprobando...' : 'Aprobar' }}</button></div></article>} @empty {<p class="empty-copy">No hay solicitudes pendientes.</p>}</div></section>
+      <section class="panel directory-panel inbox-panel"><div class="panel-heading"><div><p class="eyebrow">Bandeja de RRHH</p><h2>Solicitudes pendientes</h2><p class="inbox-summary">Revisá los cambios antes de aprobarlos o rechazarlos.</p></div><button class="refresh-button" (click)="refresh.emit()"><span aria-hidden="true">↻</span> Actualizar</button></div>@if (approvalError()) { <p class="form-error" role="alert">{{ approvalError() }}</p> }<div class="request-list request-inbox">@for (request of requests(); track request.id) {<article class="request-row"><div class="request-symbol" aria-hidden="true">↻</div><div class="request-copy"><strong>{{ request.empleadoNombre || 'Empleado' }}</strong><span class="request-id">{{ request.solicitante }} · {{ request.empleadoActivo ? 'Activo' : 'Inactivo' }} · #{{ request.id }}</span></div><div class="request-changes"><span class="changes-label">Datos a modificar</span>@for (change of changeEntries()(request); track change.label) {<span><b>{{ change.label }}</b>{{ change.value }}</span>}</div><div class="request-meta"><span class="request-date"><span aria-hidden="true">◷</span> {{ request.fecha }}</span><span class="tag"><span aria-hidden="true">!</span> {{ request.estado }}</span><button class="approve-button" [disabled]="approvingId() === request.id" (click)="approve.emit(request)"><span aria-hidden="true">✓</span> {{ approvingId() === request.id ? 'Procesando...' : 'Aprobar' }}</button><button class="reject-button" [disabled]="approvingId() === request.id" (click)="openRejection(request)">Rechazar</button></div></article>} @empty {<p class="empty-copy">No hay solicitudes pendientes.</p>}</div></section>
     } @else if (section() === 'Reportes') {
       <section class="report-grid"><article class="panel report-card request-report-card"><div class="report-icon amber-icon">S</div><p class="eyebrow">Gestión de RRHH</p><h2>Exportar solicitud</h2><p>Generá un PDF listo para imprimir con el detalle del cambio solicitado.</p><select [ngModel]="reportId()" (ngModelChange)="reportIdChange.emit($event)"><option [ngValue]="null">Elegir solicitud</option>@for (request of requests(); track request.id) {<option [ngValue]="request.id">{{ request.empleadoNombre || request.solicitante }} · #{{ request.id }}</option>}</select><button class="primary-button full" [disabled]="reportId() === null || reportLoading()" (click)="downloadReport.emit()">{{ reportLoading() ? 'Generando...' : 'Exportar / imprimir PDF' }}</button></article></section>
       @if (reportError()) { <p class="form-error">{{ reportError() }}</p> }
+    }
+    @if (rejectionRequest) {
+      <div class="modal-backdrop" (click)="closeRejection()">
+        <section class="modal rejection-modal" role="dialog" aria-modal="true" aria-labelledby="rejection-title" (click)="$event.stopPropagation()">
+          <button class="close-button" type="button" aria-label="Cerrar" (click)="closeRejection()">×</button>
+          <p class="eyebrow">Bandeja de RRHH · #{{ rejectionRequest.id }}</p>
+          <h2 id="rejection-title">Rechazar solicitud</h2>
+          <p class="rejection-copy">Indicá el motivo para que quede registrado junto a la solicitud.</p>
+          <label for="rejection-reason">Motivo del rechazo</label>
+          <textarea id="rejection-reason" name="rejectionReason" [(ngModel)]="rejectionReason" rows="4" maxlength="500" required placeholder="Escribí el motivo (máximo 500 caracteres)"></textarea>
+          <span class="reason-counter">{{ rejectionReason.length }}/500</span>
+          <button class="reject-button full" type="button" [disabled]="!rejectionReason.trim() || approvingId() === rejectionRequest.id" (click)="submitRejection()">{{ approvingId() === rejectionRequest.id ? 'Rechazando...' : 'Confirmar rechazo' }}</button>
+        </section>
+      </div>
     }
   `,
 })
@@ -49,6 +63,28 @@ export class HrViewComponent {
   readonly searchChange = output<string>();
   readonly refresh = output<void>();
   readonly approve = output<Solicitud>();
+  readonly reject = output<{ request: Solicitud; motivo: string }>();
   readonly reportIdChange = output<number | string | null>();
   readonly downloadReport = output<void>();
+  rejectionRequest: Solicitud | null = null;
+  rejectionReason = '';
+
+  openRejection(request: Solicitud) {
+    this.rejectionRequest = request;
+    this.rejectionReason = '';
+  }
+
+  closeRejection() {
+    if (this.approvingId() === this.rejectionRequest?.id) return;
+    this.rejectionRequest = null;
+    this.rejectionReason = '';
+  }
+
+  submitRejection() {
+    const motivo = this.rejectionReason.trim();
+    if (!this.rejectionRequest || !motivo || motivo.length > 500) return;
+    this.reject.emit({ request: this.rejectionRequest, motivo });
+    this.rejectionRequest = null;
+    this.rejectionReason = '';
+  }
 }

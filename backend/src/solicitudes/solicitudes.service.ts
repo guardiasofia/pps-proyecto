@@ -590,6 +590,60 @@ export class SolicitudesService {
     }
   }
 
+  async rechazar(
+    id: string,
+    data: { rechazadoPor?: string | number | null; motivo: string },
+  ) {
+    if (!this.dataSource)
+      throw new BadRequestException(
+        'La persistencia de solicitudes no está disponible',
+      );
+    if (
+      data?.rechazadoPor === null ||
+      data?.rechazadoPor === undefined ||
+      data?.rechazadoPor === ''
+    ) {
+      throw new UnauthorizedException(
+        'El token no contiene la identidad de quien rechaza',
+      );
+    }
+    const motivo = data.motivo?.trim();
+    if (!motivo || motivo.length > 500)
+      throw new BadRequestException(
+        'El motivo del rechazo es obligatorio y no puede superar los 500 caracteres',
+      );
+    try {
+      return await this.dataSource.transaction(async (manager) => {
+        const repository = manager.getRepository(Solicitud);
+        const solicitud = await repository.findOne({
+          where: { id },
+          lock: { mode: 'pessimistic_write' },
+        });
+        if (!solicitud)
+          throw new NotFoundException(`Solicitud con id ${id} no encontrada`);
+        if (solicitud.estado !== 'pendiente') {
+          throw new BadRequestException(
+            `La solicitud ${id} ya no está pendiente`,
+          );
+        }
+
+        solicitud.estado = 'rechazada';
+        solicitud.rechazadoPor = String(data.rechazadoPor);
+        solicitud.motivoRechazo = motivo;
+        solicitud.rechazadoEn = new Date();
+        return repository.save(solicitud);
+      });
+    } catch (error) {
+      if (
+        error instanceof BadRequestException ||
+        error instanceof NotFoundException ||
+        error instanceof UnauthorizedException
+      )
+        throw error;
+      throw new BadRequestException('No se pudo rechazar la solicitud');
+    }
+  }
+
   private async aplicarCambios(manager: EntityManager, solicitud: Solicitud) {
     const legajo = solicitud.empleadoId;
     const empleadoRepository = manager.getRepository(Empleado);

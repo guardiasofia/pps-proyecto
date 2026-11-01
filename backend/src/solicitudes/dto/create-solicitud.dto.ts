@@ -137,3 +137,10 @@ export class AprobarSolicitudDto {
   @MaxLength(500)
   observacion?: string;
 }
+
+export class RechazarSolicitudDto {
+  @IsString()
+  @Matches(/\S/)
+  @MaxLength(500)
+  motivo: string;
+}

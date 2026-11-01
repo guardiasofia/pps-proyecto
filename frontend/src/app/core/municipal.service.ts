@@ -23,6 +23,7 @@ export interface Solicitud {
   valoresAnteriores?: Record<string, unknown>;
   catalogosSolicitados?: { funcion?: string; reparticion?: string };
   cambios?: Record<string, unknown>;
+  motivoRechazo?: string;
 }
 
 export interface Familiar {
@@ -96,6 +97,7 @@ export class MunicipalService {
         valoresAnteriores: request.valoresAnteriores,
         catalogosSolicitados: request.catalogosSolicitados,
         cambios: request.cambios,
+        motivoRechazo: request.motivoRechazo,
       })))
     );
   }
@@ -113,6 +115,12 @@ export class MunicipalService {
   aprobarSolicitud(id: number | string, observacion = '') {
     return this.http.patch<BackendSolicitud>(`${this.apiUrl}/solicitudes/${id}/aprobar`, {
       observacion,
+    });
+  }
+
+  rechazarSolicitud(id: number | string, motivo: string) {
+    return this.http.patch<BackendSolicitud>(`${this.apiUrl}/solicitudes/${id}/rechazar`, {
+      motivo,
     });
   }
 
@@ -166,6 +174,7 @@ interface BackendSolicitud {
   estado: string;
   creadoEn?: string;
   cambios?: Record<string, unknown>;
+  motivoRechazo?: string;
 }
 
 interface BackendFichaEmpleado {

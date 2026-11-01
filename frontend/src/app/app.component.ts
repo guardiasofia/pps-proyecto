@@ -273,6 +273,22 @@ export class AppComponent {
     });
   }
 
+  rejectRequest(event: { request: Solicitud; motivo: string }) {
+    if (!this.isRrhh || this.approvingId !== null) return;
+    this.approvingId = event.request.id;
+    this.approvalError = '';
+    this.municipalService.rechazarSolicitud(event.request.id, event.motivo).subscribe({
+      next: () => {
+        this.approvingId = null;
+        this.refresh();
+      },
+      error: () => {
+        this.approvingId = null;
+        this.approvalError = 'No se pudo rechazar la solicitud.';
+      },
+    });
+  }
+
   submitRequest() {
     const value = this.requestPayload;
     if (value === null) return;

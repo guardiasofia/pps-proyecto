@@ -36,4 +36,18 @@ export class Solicitud {
 
   @Column({ name: 'aprobado_en', type: 'timestamptz', nullable: true })
   aprobadoEn?: Date;
+
+  @Column({
+    name: 'rechazado_por',
+    type: 'varchar',
+    length: 100,
+    nullable: true,
+  })
+  rechazadoPor?: string;
+
+  @Column({ name: 'motivo_rechazo', type: 'text', nullable: true })
+  motivoRechazo?: string;
+
+  @Column({ name: 'rechazado_en', type: 'timestamptz', nullable: true })
+  rechazadoEn?: Date;
 }

@@ -18,6 +18,7 @@ describe('Solicitudes (e2e, sin base de datos)', () => {
   const service = {
     create: vi.fn(async (body: unknown, userId: unknown) => ({ body, userId })),
     aprobar: vi.fn(async (id: string, data: unknown) => ({ id, data })),
+    rechazar: vi.fn(async (id: string, data: unknown) => ({ id, data })),
     findAll: vi.fn(async () => []),
   };
 
@@ -99,5 +100,30 @@ describe('Solicitudes (e2e, sin base de datos)', () => {
       .send({ observacion: 'ok' })
       .expect(200);
     expect(res.body.data.aprobadoPor).toBe(1);
+  });
+
+  it('solo RRHH puede rechazar y pasa motivo e identidad autenticada', async () => {
+    await request(app.getHttpServer())
+      .patch('/api/solicitudes/abc/rechazar')
+      .set('Authorization', `Bearer ${token({ sub: 3, rol: 2 })}`)
+      .send({ motivo: 'Falta documentación' })
+      .expect(403);
+    const res = await request(app.getHttpServer())
+      .patch('/api/solicitudes/abc/rechazar')
+      .set('Authorization', `Bearer ${token({ sub: 1, rol: 1 })}`)
+      .send({ motivo: 'Falta documentación' })
+      .expect(200);
+    expect(res.body.data).toMatchObject({
+      rechazadoPor: 1,
+      motivo: 'Falta documentación',
+    });
+  });
+
+  it('rechaza motivos vacíos', async () => {
+    await request(app.getHttpServer())
+      .patch('/api/solicitudes/abc/rechazar')
+      .set('Authorization', `Bearer ${token({ sub: 1, rol: 1 })}`)
+      .send({ motivo: '   ' })
+      .expect(400);
   });
 });

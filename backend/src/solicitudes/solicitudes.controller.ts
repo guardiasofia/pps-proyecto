@@ -14,6 +14,7 @@ import { User } from '../common/decorators/user.decorator.js';
 import {
   AprobarSolicitudDto,
   CreateSolicitudDto,
+  RechazarSolicitudDto,
 } from './dto/create-solicitud.dto.js';
 import { SolicitudesService } from './solicitudes.service.js';
 
@@ -60,6 +61,20 @@ export class SolicitudesController {
     return this.solicitudesService.aprobar(id, {
       ...body,
       aprobadoPor: userId,
+    });
+  }
+
+  @Patch(':id/rechazar')
+  @UseGuards(RolesGuard)
+  @Roles('RRHH')
+  rechazar(
+    @Param('id') id: string,
+    @Body() body: RechazarSolicitudDto,
+    @User('id') userId: string | number | null,
+  ) {
+    return this.solicitudesService.rechazar(id, {
+      ...body,
+      rechazadoPor: userId,
     });
   }
 }
