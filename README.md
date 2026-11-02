@@ -134,10 +134,6 @@ La API verifica el hash de la contraseña asociado al usuario vinculado al legaj
 
 La tabla de variables, despliegue completo, operación con la base y solución de problemas están en [docs/DESPLIEGUE.md](docs/DESPLIEGUE.md).
 
-## Publicación para evaluación
-
-El repositorio incluye [render.yaml](render.yaml) para desplegar temporalmente en Render un sitio, una API y una base gratuita. Todavía no hay una URL publicada: es necesario conectar GitHub, crear el Blueprint en Render, cargar una base ficticia y provisionar las cuentas de prueba. La API gratuita puede tardar en despertar y PostgreSQL gratuito expira a los 30 días. Los pasos están en [docs/DESPLIEGUE.md](docs/DESPLIEGUE.md).
-
 ## Variables de entorno
 
 | Variable | Uso y valor predeterminado |
@@ -150,7 +146,6 @@ El repositorio incluye [render.yaml](render.yaml) para desplegar temporalmente e
 | `JWT_ALGORITHM` | Algoritmo(s) permitidos separados por coma; predeterminado `RS256` con clave pública o `HS256` con secreto. Debe concordar con el emisor. |
 | `JWT_MAX_AGE` | Antigüedad máxima del token; predeterminado `1h`. El JWT también debe tener `exp`. |
 | `CORS_ORIGINS` | Orígenes web permitidos separados por coma. En producción es obligatorio; en desarrollo permite localhost:4200. |
-| `DB_SSL` | Con `true`, activa TLS para conexiones PostgreSQL desde herramientas locales; no se configura en la API de Render, que usa la conexión interna. |
 | `JSON_BODY_LIMIT` | Límite del cuerpo JSON; `8mb`. |
 | `NODE_ENV` | El modo `production` exige la configuración de base y `CORS_ORIGINS`. |
 | `PGADMIN_DEFAULT_EMAIL`, `PGADMIN_DEFAULT_PASSWORD` | Credenciales de pgAdmin en Compose; valores locales predeterminados en `docker-compose.yml`. |

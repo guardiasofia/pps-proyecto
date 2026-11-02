@@ -2,9 +2,9 @@
 
 ## Introducción
 
-Este documento describe cómo preparar y ejecutar el sistema de autogestión de datos de la Municipalidad de Concordia desde el código del repositorio. El entorno local usa Docker Compose para PostgreSQL y pgAdmin, y Node.js/npm para API y frontend. El repositorio también incluye un Blueprint de Render para preparar una publicación temporal; agregar esa configuración no significa que la aplicación ya esté desplegada ni que tenga una URL pública.
+Este documento describe cómo preparar y ejecutar el sistema de autogestión de datos de la Municipalidad de Concordia desde el código del repositorio. La modalidad actualmente configurada es de desarrollo: Docker Compose ejecuta PostgreSQL y pgAdmin, mientras que API y frontend se ejecutan con Node.js/npm en el host.
 
-No hay `Dockerfile` para la API o el portal ni servicios de aplicación en `docker-compose.yml`; Render compila ambos servicios directamente desde sus directorios.
+No hay `Dockerfile` para la API o el portal ni servicios de aplicación en `docker-compose.yml`; por ello, el despliegue integral de producción requiere definir esa infraestructura por separado.
 
 ## Requisitos de hardware
 
@@ -110,7 +110,6 @@ JSON_BODY_LIMIT=8mb
 | `JWT_ALGORITHM` | Lista separada por comas de algoritmos aceptados. Predeterminado `RS256` si hay clave pública o `HS256` si hay secreto. Alinear con el proveedor. |
 | `JWT_MAX_AGE` | Antigüedad máxima admitida; predeterminada `1h`. Se exige además el claim `exp`. |
 | `CORS_ORIGINS` | Lista de orígenes permitidos, separada por comas. Obligatoria cuando `NODE_ENV=production`; el valor predeterminado de desarrollo admite localhost:4200. |
-| `DB_SSL` | Si vale `true`, activa TLS para PostgreSQL. Se usa al conectar desde una herramienta local a la URL externa de Render; la API alojada utiliza la conexión interna de la misma región. |
 | `JSON_BODY_LIMIT` | Límite de cuerpo JSON; predeterminado `8mb`. |
 | `NODE_ENV` | Al establecer `production`, se aplican las comprobaciones de configuración productiva. |
 | `PGADMIN_DEFAULT_EMAIL`, `PGADMIN_DEFAULT_PASSWORD` | Credenciales de pgAdmin interpretadas por Docker Compose; se usan defaults locales en el YAML. |
@@ -253,73 +252,7 @@ docker compose logs -f postgres
 
 Compose obtiene `postgres:15` y `dpage/pgadmin4` desde sus imágenes declaradas. No hay `Dockerfile` de la aplicación ni servicios que ejecutar con `docker compose build`; por tanto, el portal y la API se compilan con npm en el host.
 
-### Render para una evaluación temporal
-
-La configuración [render.yaml](../render.yaml) define tres recursos: una API NestJS gratuita, un sitio estático Angular gratuito y una base PostgreSQL gratuita, todos en Ohio. El sitio reescribe `/api/*` hacia la API pública y CORS admite el origen del frontend. El Blueprint genera `JWT_SECRET` y obtiene las credenciales de DB desde Render; no guarda secretos en Git.
-
-Esta opción es solo para evaluación, no para producción. Según las limitaciones vigentes de Render, la API gratuita se suspende tras 15 minutos sin tráfico y puede tardar alrededor de un minuto en volver; la base gratuita tiene 1 GB y expira a los 30 días. Revisar el plan y los límites de uso que muestra el Dashboard antes de confirmar la creación. [Documentación oficial de planes gratuitos](https://render.com/docs/free).
-
-#### Publicar los servicios
-
-1. Subir el repositorio a GitHub y crear/iniciar sesión en una cuenta de Render.
-2. En Render, elegir **New > Blueprint**, conectar el repositorio y seleccionar la rama que contiene `render.yaml`.
-3. Revisar que los tres recursos aparezcan con plan `Free` y confirmar la creación. La primera compilación crea el portal y la API; la base queda vacía hasta importar el esquema y los datos.
-4. Si Render indica que alguno de los nombres ya está ocupado, cambiar el nombre del recurso en `render.yaml`. Si cambia el nombre del frontend, actualizar también `CORS_ORIGINS`; si cambia el del backend, actualizar el destino del rewrite; si cambia el de la base, actualizar todos los `fromDatabase.name`. Volver a sincronizar el Blueprint.
-5. Esperar que PostgreSQL figure disponible. En su Dashboard, abrir **Connect** y copiar los datos de conexión **External**. Para una carga desde la computadora, se necesita `psql` instalado y accesible en PowerShell; el Query Tool de pgAdmin no es compatible con los bloques `COPY FROM stdin` del dump.
-
-#### Cargar una base de demostración
-
-`pps_db.sql` es una carga inicial, no un respaldo actualizado de pgAdmin. No incluye los CUIL, vínculos ni contraseñas que se hayan agregado localmente después. Para una aplicación pública, usar solo datos ficticios y revisar/sanitizar el dataset antes de importarlo; no publicar datos personales municipales reales.
-
-El dump ya no fuerza el propietario local `pps_user`, así que los objetos se crean bajo el usuario de la conexión de destino. Desde la raíz del repositorio, reemplazar los valores entre `<...>` con los datos **External** de Render y ejecutar:
-
-```powershell
-$securePassword = Read-Host "Contraseña externa de PostgreSQL" -AsSecureString
-$env:PGPASSWORD = [System.Net.NetworkCredential]::new("", $securePassword).Password
-try {
-    psql "host=<HOST> port=5432 dbname=pps_db user=pps_user sslmode=require" `
-      -v ON_ERROR_STOP=1 `
-      -f .\pps_db.sql `
-      -f .\backend\migrations\001_create_solicitudes.sql `
-      -f .\backend\migrations\002_seed_catalogos.sql `
-      -f .\backend\migrations\003_add_rejection_details.sql `
-      -f .\backend\migrations\004_normalize_catalogos.sql `
-      -f .\backend\migrations\005_add_password_hash.sql
-}
-finally {
-    Remove-Item Env:PGPASSWORD
-}
-```
-
-La importación solo se hace una vez en una base vacía. Luego, crear los dos usuarios ficticios de evaluación: uno con `idrol = 2` (Empleado) y otro con `idrol = 1` (RRHH), con CUIL único, legajo activo y vínculo activo en `usuarioslegajos`. Los roles y asociaciones no se deducen del CUIL. No reutilizar credenciales publicadas en chats o documentación.
-
-Para asignar contraseñas desde el equipo local, abrir `backend/` e indicar las credenciales externas de la base en variables de entorno. El script usa TLS si `DB_SSL=true`:
-
-```powershell
-$env:DB_HOST = "<HOST>"
-$env:DB_PORT = "5432"
-$env:DB_USERNAME = "pps_user"
-$env:DB_NAME = "pps_db"
-$env:DB_SSL = "true"
-$securePassword = Read-Host "Contraseña externa de PostgreSQL" -AsSecureString
-$env:DB_PASSWORD = [System.Net.NetworkCredential]::new("", $securePassword).Password
-try {
-    npm run auth:set-password
-}
-finally {
-    Remove-Item Env:DB_HOST, Env:DB_PORT, Env:DB_USERNAME, Env:DB_NAME, Env:DB_SSL, Env:DB_PASSWORD
-}
-```
-
-Repetir el comando por cada CUIL ficticio. `auth:set-password` oculta la contraseña durante el ingreso y guarda un hash scrypt. No guardar la contraseña de PostgreSQL ni las claves de prueba en el repositorio.
-
-#### Compartir el acceso
-
-Una vez que los servicios estén desplegados, la URL pública es la que Render muestra para el sitio `pps-autogestion-web` (formato `https://<nombre>.onrender.com`). Probar ambos perfiles, una solicitud de punta a punta y el PDF. Compartir la URL junto con los CUIL y contraseñas temporales por un canal privado aparte del repositorio; rotarlas al finalizar la evaluación.
-
-La URL no se puede generar desde el repositorio: la dueña del proyecto debe autorizar GitHub y crear/confirmar los recursos en su cuenta Render. La publicación todavía requiere completar esos pasos y verificar la aplicación desplegada.
-
-### Despliegue local disponible
+### Despliegue disponible
 
 La puesta en marcha local completa combina los contenedores de base de datos con dos procesos npm:
 
@@ -329,7 +262,7 @@ La puesta en marcha local completa combina los contenedores de base de datos con
 4. En otra terminal, ejecutar `cd frontend; npm ci; npm start`.
 5. Abrir `http://localhost:4200`.
 
-Para una instalación productiva, siguen pendientes una estrategia de migraciones automatizadas, backups/restauración y elección de planes de servicio apropiados. El Blueprint gratuito es únicamente un punto de partida para evaluación.
+Para producción, además de compilar, faltan en este repositorio las imágenes de aplicación, servidor web para el artefacto Angular, proxy/TLS, administración de secretos, estrategia de migraciones y política de backup/restore. No asumir que el Compose actual despliega esos elementos.
 
 ## Verificación
 

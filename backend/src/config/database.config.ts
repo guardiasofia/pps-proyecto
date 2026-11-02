@@ -14,7 +14,6 @@ export const databaseConfig: TypeOrmModuleOptions = {
   username: required('DB_USERNAME', 'pps_user'),
   password: required('DB_PASSWORD', 'pps_password'),
   database: required('DB_NAME', 'pps_db'),
-  ssl: process.env.DB_SSL === 'true',
   autoLoadEntities: true,
   synchronize: false,
   logging: process.env.NODE_ENV !== 'production',
