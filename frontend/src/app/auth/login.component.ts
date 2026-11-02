@@ -14,9 +14,10 @@ import { AuthService } from '../core/auth.service';
         <h1>Ingresar al sistema</h1>
         <p class="login-copy">Accedé al panel de gestión municipal de Concordia.</p>
         <form (ngSubmit)="submit()">
-          <label>Token de acceso externo<textarea name="token" [(ngModel)]="token" rows="4" autocomplete="off" required></textarea></label>
+          <label>Usuario (CUIL)<input name="cuil" [(ngModel)]="cuil" inputmode="numeric" autocomplete="username" maxlength="50" placeholder="20-12345678-9" required /></label>
+          <label>Contraseña<input name="password" [(ngModel)]="password" type="password" autocomplete="current-password" maxlength="1024" required /></label>
           @if (error) { <p class="form-error" role="alert">{{ error }}</p> }
-          <button class="primary-button full" type="submit" [disabled]="!token.trim() || busy">{{ busy ? 'Validando…' : 'Validar token' }}</button>
+          <button class="primary-button full" type="submit" [disabled]="!cuil.trim() || !password || busy">{{ busy ? 'Ingresando…' : 'Ingresar' }}</button>
         </form>
       </section>
     </main>
@@ -25,23 +26,26 @@ import { AuthService } from '../core/auth.service';
 export class LoginComponent {
   private readonly authService = inject(AuthService);
   readonly loggedIn = output<void>();
-  token = '';
+  cuil = '';
+  password = '';
   error = '';
   busy = false;
 
   submit() {
-    if (!this.token.trim() || this.busy) return;
+    if (!this.cuil.trim() || !this.password || this.busy) return;
     this.busy = true;
     this.error = '';
-    this.authService.login(this.token.trim()).subscribe({
+    this.authService.login(this.cuil, this.password).subscribe({
       next: () => {
         this.busy = false;
-        this.token = '';
+        this.password = '';
         this.loggedIn.emit();
       },
-      error: () => {
+      error: (response: { status?: number }) => {
         this.busy = false;
-        this.error = 'El token no es válido o expiró. Solicitá uno vigente al proveedor de identidad.';
+        this.error = response.status === 401 || response.status === 400
+          ? 'CUIL o contraseña incorrectos, o cuenta no habilitada.'
+          : 'No se pudo iniciar sesión. Verificá que el backend esté disponible.';
       },
     });
   }

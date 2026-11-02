@@ -16,6 +16,7 @@ services:
       - ./backend/migrations/002_seed_catalogos.sql:/docker-entrypoint-initdb.d/03-catalogos.sql:ro
       - ./backend/migrations/003_add_rejection_details.sql:/docker-entrypoint-initdb.d/04-rejection-details.sql:ro
       - ./backend/migrations/004_normalize_catalogos.sql:/docker-entrypoint-initdb.d/05-normalize-catalogos.sql:ro
+      - ./backend/migrations/005_add_password_hash.sql:/docker-entrypoint-initdb.d/06-password-hash.sql:ro
 
   pgadmin:
     image: dpage/pgadmin4

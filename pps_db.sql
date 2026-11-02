@@ -47,7 +47,6 @@ CREATE TYPE public.estado_enum AS ENUM (
 );
 
 
-ALTER TYPE public.estado_enum OWNER TO pps_user;
 
 SET default_tablespace = '';
 
@@ -70,7 +69,6 @@ CREATE TABLE public.archivos (
 );
 
 
-ALTER TABLE public.archivos OWNER TO pps_user;
 
 --
 -- TOC entry 224 (class 1259 OID 16568)
@@ -94,7 +92,6 @@ CREATE TABLE public.direcciones (
 );
 
 
-ALTER TABLE public.direcciones OWNER TO pps_user;
 
 --
 -- TOC entry 227 (class 1259 OID 16614)
@@ -113,7 +110,6 @@ CREATE TABLE public.emp_cud (
 );
 
 
-ALTER TABLE public.emp_cud OWNER TO pps_user;
 
 --
 -- TOC entry 225 (class 1259 OID 16580)
@@ -133,7 +129,6 @@ CREATE TABLE public.empestudios (
 );
 
 
-ALTER TABLE public.empestudios OWNER TO pps_user;
 
 --
 -- TOC entry 222 (class 1259 OID 16531)
@@ -158,7 +153,6 @@ CREATE TABLE public.empleados (
 );
 
 
-ALTER TABLE public.empleados OWNER TO pps_user;
 
 --
 -- TOC entry 219 (class 1259 OID 16509)
@@ -173,7 +167,6 @@ CREATE TABLE public.estudios (
 );
 
 
-ALTER TABLE public.estudios OWNER TO pps_user;
 
 --
 -- TOC entry 226 (class 1259 OID 16597)
@@ -193,7 +186,6 @@ CREATE TABLE public.familiares (
 );
 
 
-ALTER TABLE public.familiares OWNER TO pps_user;
 
 --
 -- TOC entry 216 (class 1259 OID 16492)
@@ -208,7 +200,6 @@ CREATE TABLE public.funciones (
 );
 
 
-ALTER TABLE public.funciones OWNER TO pps_user;
 
 --
 -- TOC entry 220 (class 1259 OID 16514)
@@ -222,7 +213,6 @@ CREATE TABLE public.parentesco (
 );
 
 
-ALTER TABLE public.parentesco OWNER TO pps_user;
 
 --
 -- TOC entry 217 (class 1259 OID 16497)
@@ -238,7 +228,6 @@ CREATE TABLE public.reparticiones (
 );
 
 
-ALTER TABLE public.reparticiones OWNER TO pps_user;
 
 --
 -- TOC entry 215 (class 1259 OID 16487)
@@ -251,7 +240,6 @@ CREATE TABLE public.roles (
 );
 
 
-ALTER TABLE public.roles OWNER TO pps_user;
 
 --
 -- TOC entry 221 (class 1259 OID 16519)
@@ -270,7 +258,6 @@ CREATE TABLE public.usuarios (
 );
 
 
-ALTER TABLE public.usuarios OWNER TO pps_user;
 
 --
 -- TOC entry 223 (class 1259 OID 16553)
@@ -287,7 +274,6 @@ CREATE TABLE public.usuarioslegajos (
 );
 
 
-ALTER TABLE public.usuarioslegajos OWNER TO pps_user;
 
 --
 -- TOC entry 3534 (class 0 OID 16502)
@@ -686,5 +672,4 @@ ALTER TABLE ONLY public.usuarioslegajos
 --
 -- PostgreSQL database dump complete
 --
-
 

@@ -20,6 +20,7 @@
     "test:cov": "vitest run --coverage",
     "test:debug": "vitest --inspect-brk --no-file-parallelism",
     "test:e2e": "vitest run --config ./vitest.config.e2e.ts",
+    "auth:set-password": "node scripts/set-password.mjs",
     "token:rrhh": "node scripts/dev-token.mjs rrhh",
     "token:empleado": "node scripts/dev-token.mjs empleado",
     "token:ana": "node scripts/dev-token.mjs ana"

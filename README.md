@@ -2,7 +2,7 @@
 
 Portal web y API para que el personal municipal presente solicitudes de actualización de datos de su legajo y para que Recursos Humanos las revise, apruebe o rechace.
 
-> Proyecto de Práctica Profesional Supervisada (PPS), Licenciatura en Sistemas, UNER. La integración con identidad municipal es externa: esta aplicación no administra contraseñas ni emite credenciales.
+> Proyecto de Práctica Profesional Supervisada (PPS), Licenciatura en Sistemas, UNER. El acceso se realiza con el CUIL y una contraseña asignada a cada cuenta activa vinculada a un legajo.
 
 ## Objetivo
 
@@ -33,13 +33,14 @@ Los cambios que pueden solicitarse incluyen domicilio, teléfonos, correo electr
 flowchart LR
     U[Empleado o RRHH] -->|Navegador| FE[Angular]
     FE -->|HTTP /api + JWT| API[NestJS]
-    IDP[Proveedor externo de identidad] -->|Emite JWT| U
+    U -->|CUIL + contraseña| FE
+    API -->|Verifica contraseña y emite JWT| FE
     API -->|TypeORM y consultas SQL| DB[(PostgreSQL)]
     API -->|PDF de solicitud| PDF[PDFKit]
     PDF --> FE
 ```
 
-El proveedor de identidad emite el token; el usuario lo presenta y el backend verifica localmente su firma, expiración y claims. En desarrollo, Angular se sirve en `http://localhost:4200` y su proxy reenvía `/api` a `http://localhost:3000`. Las secciones de la interfaz se muestran mediante estado del componente, no mediante rutas de Angular.
+La API verifica el hash de la contraseña asociado al usuario vinculado al legajo del CUIL y emite un JWT firmado. Angular conserva el token en memoria durante la sesión. En desarrollo, el frontend se sirve en `http://localhost:4200` y su proxy reenvía `/api` a `http://localhost:3000`. Las secciones de la interfaz se muestran mediante estado del componente, no mediante rutas de Angular.
 
 ## Estructura del repositorio
 
@@ -50,9 +51,9 @@ El proveedor de identidad emite el token; el usuario lo presenta y el backend ve
 ├── pps_db.sql                    # Esquema base de la base municipal
 ├── backend/
 │   ├── migrations/               # Solicitudes, catálogos y datos de rechazo
-│   ├── scripts/dev-token.mjs     # Emisión de JWT de prueba (solo desarrollo)
+│   ├── scripts/                  # Herramienta de claves y JWT de prueba
 │   ├── src/
-│   │   ├── auth/                 # Estrategia JWT y perfil
+│   │   ├── auth/                 # Login CUIL/contraseña, hashes y estrategia JWT
 │   │   ├── common/               # Guards, decoradores y validadores
 │   │   ├── empleados/            # Consultas de legajos
 │   │   ├── reportes/             # PDF de solicitudes
@@ -60,7 +61,7 @@ El proveedor de identidad emite el token; el usuario lo presenta y el backend ve
 │   └── test/                     # Pruebas e2e
 ├── frontend/
 │   └── src/app/
-│       ├── auth/                 # Ingreso por token externo
+│       ├── auth/                 # Ingreso con CUIL y contraseña
 │       ├── core/                 # Servicios e interceptor HTTP
 │       ├── employee/             # Portal del empleado
 │       └── hr/                   # Panel de RRHH
@@ -76,7 +77,7 @@ El proveedor de identidad emite el token; el usuario lo presenta y el backend ve
 
 - Node.js 22 LTS recomendado (los manifiestos no fijan `engines`) y npm.
 - Docker Desktop con Docker Compose, o PostgreSQL 15 accesible desde el backend.
-- Un emisor de JWT compatible y su clave pública/secret compartido de verificación.
+- Un secreto `JWT_SECRET` para desarrollo o un par de claves JWT RS256 para producción.
 - Para abrir el PDF, un navegador que permita ventanas emergentes para el sitio.
 
 ## Instalación y configuración local
@@ -88,7 +89,7 @@ El proveedor de identidad emite el token; el usuario lo presenta y el backend ve
    docker compose up -d postgres pgadmin
    ```
 
-   En la primera inicialización del volumen, Compose ejecuta `pps_db.sql` y las cuatro migraciones en orden. Los scripts de inicialización no se vuelven a ejecutar en volúmenes ya creados.
+   En la primera inicialización del volumen, Compose ejecuta `pps_db.sql` y las cinco migraciones en orden. Los scripts de inicialización no se vuelven a ejecutar en volúmenes ya creados.
 
 3. Crear `backend/.env` manualmente. El repositorio **no contiene** `backend/.env.example`. Ejemplo para desarrollo:
 
@@ -106,15 +107,20 @@ El proveedor de identidad emite el token; el usuario lo presenta y el backend ve
    JSON_BODY_LIMIT=8mb
    ```
 
-   En desarrollo se puede usar `JWT_SECRET` para HS256. Para una integración real, se recomienda `JWT_PUBLIC_KEY` y RS256. No compartir ni publicar credenciales o tokens.
+   En desarrollo se puede usar `JWT_SECRET` para HS256. Para RS256 se deben configurar tanto `JWT_PUBLIC_KEY` como `JWT_PRIVATE_KEY`. No compartir ni publicar credenciales o tokens.
+
+   En bases existentes, aplicar también `backend/migrations/005_add_password_hash.sql` antes de iniciar la API. Asociar primero cualquier cuenta RRHH que todavía no tenga un vínculo activo en `usuarioslegajos`; cargar un CUIL faltante en el empleado antes de intentar habilitarlo.
 
 4. Instalar dependencias y arrancar la API:
 
    ```powershell
    cd backend
    npm ci
+   npm run auth:set-password
    npm run start:dev
    ```
+
+   `auth:set-password` pide CUIL y contraseña en una terminal interactiva, oculta la contraseña y almacena únicamente su hash. Solo habilita cuentas activas asociadas de forma única a un legajo activo con ese CUIL.
 
 5. En otra terminal, arrancar el portal:
 
@@ -128,6 +134,10 @@ El proveedor de identidad emite el token; el usuario lo presenta y el backend ve
 
 La tabla de variables, despliegue completo, operación con la base y solución de problemas están en [docs/DESPLIEGUE.md](docs/DESPLIEGUE.md).
 
+## Publicación para evaluación
+
+El repositorio incluye [render.yaml](render.yaml) para desplegar temporalmente en Render un sitio, una API y una base gratuita. Todavía no hay una URL publicada: es necesario conectar GitHub, crear el Blueprint en Render, cargar una base ficticia y provisionar las cuentas de prueba. La API gratuita puede tardar en despertar y PostgreSQL gratuito expira a los 30 días. Los pasos están en [docs/DESPLIEGUE.md](docs/DESPLIEGUE.md).
+
 ## Variables de entorno
 
 | Variable | Uso y valor predeterminado |
@@ -135,10 +145,12 @@ La tabla de variables, despliegue completo, operación con la base y solución d
 | `PORT` | Puerto de la API; `3000`. |
 | `DB_HOST`, `DB_PORT`, `DB_USERNAME`, `DB_PASSWORD`, `DB_NAME` | Conexión PostgreSQL. En desarrollo: `localhost`, `5432`, `pps_user`, `pps_password`, `pps_db`. En producción las variables de host, usuario, contraseña y base son obligatorias. |
 | `JWT_PUBLIC_KEY` | Clave pública del emisor para verificar tokens asimétricos; tiene precedencia sobre `JWT_SECRET`. Acepta saltos de línea escapados como `\n`. |
+| `JWT_PRIVATE_KEY` | Clave privada correspondiente a `JWT_PUBLIC_KEY`, necesaria para emitir tokens de login RS256. Mantenerla solo en el entorno del backend. |
 | `JWT_SECRET` | Secreto compartido para verificar tokens HS256 (desarrollo/pruebas). |
 | `JWT_ALGORITHM` | Algoritmo(s) permitidos separados por coma; predeterminado `RS256` con clave pública o `HS256` con secreto. Debe concordar con el emisor. |
 | `JWT_MAX_AGE` | Antigüedad máxima del token; predeterminado `1h`. El JWT también debe tener `exp`. |
 | `CORS_ORIGINS` | Orígenes web permitidos separados por coma. En producción es obligatorio; en desarrollo permite localhost:4200. |
+| `DB_SSL` | Con `true`, activa TLS para conexiones PostgreSQL desde herramientas locales; no se configura en la API de Render, que usa la conexión interna. |
 | `JSON_BODY_LIMIT` | Límite del cuerpo JSON; `8mb`. |
 | `NODE_ENV` | El modo `production` exige la configuración de base y `CORS_ORIGINS`. |
 | `PGADMIN_DEFAULT_EMAIL`, `PGADMIN_DEFAULT_PASSWORD` | Credenciales de pgAdmin en Compose; valores locales predeterminados en `docker-compose.yml`. |
@@ -163,15 +175,20 @@ Ver instrucciones, conexión, persistencia y límites de este modo en [docs/DESP
 | `RRHH` (también se normalizan los identificadores `1`, `RRHH-ADMIN` y `ADMIN`) | Acceso a directorio, bandeja, aprobación/rechazo y reportes. |
 | `EMPLEADO` (también se normaliza el identificador `2`) | Acceso a ficha propia y creación de solicitudes, siempre que el usuario esté vinculado a un legajo activo. |
 
-El JWT debe incluir `exp`, un identificador (`sub`, `id` o `usuCodigo`) y un rol admitido para las operaciones restringidas. La pantalla solicita un token externo; no hay contraseñas locales. Para desarrollo, existen `npm run token:rrhh`, `npm run token:empleado` y `npm run token:ana` en `backend`; requieren `JWT_SECRET` y rechazan `NODE_ENV=production`.
+El campo **Usuario** del login es el CUIL del empleado y la contraseña se asigna por cuenta con `npm run auth:set-password` desde `backend/`. La aplicación guarda hashes scrypt en `usuarios.password_hash`, no contraseñas en texto. Se requiere una sola cuenta activa vinculada a un legajo activo con ese CUIL; las cuentas sin vínculo (incluidas las cuentas RRHH no asociadas) no pueden iniciar sesión hasta que se cargue la relación correcta en `usuarioslegajos`. Los roles se obtienen de `usuarios.idrol`; `1` da acceso a RRHH y `2` al portal de empleado. Los scripts `npm run token:rrhh`, `npm run token:empleado` y `npm run token:ana` se conservan para pruebas locales de API; requieren `JWT_SECRET` y rechazan `NODE_ENV=production`.
+
+El CUIL puede ingresarse con o sin separadores (guiones, puntos o espacios); el login comprueba el formato de 11 dígitos, no que el CUIL exista ni su dígito verificador. El nombre que aparece en el portal se forma con nombre y apellido de la cuenta vinculada. Para la base local de pruebas, los roles y vínculos vigentes se consultan en `usuarios`, `roles` y `usuarioslegajos`. Para evaluar ambos perfiles, preparar una cuenta de prueba vinculada para Empleado y otra para RRHH, asignarles contraseñas con la herramienta de backend y entregar al evaluador la URL, el CUIL y la contraseña por un canal privado. Las credenciales no se publican en este README. Para restablecer o rotar una contraseña, volver a ejecutar `npm run auth:set-password` y asignarla de nuevo de forma interactiva.
+
+`pps_db.sql` es el esquema y los datos de inicio, no un respaldo actualizado de lo editado después en pgAdmin. No hace falta volver a subirlo para conservar cambios en la base actual: quedan en PostgreSQL. Para que el evaluador pueda ingresar desde una instalación nueva, preparar en esa base los legajos ficticios, CUIL y vínculos necesarios para ambos roles; luego asignar las contraseñas en ese entorno con la herramienta y compartir esos datos por privado. No copiar hashes ni claves al repositorio.
 
 ## Endpoints principales
 
-Todos los endpoints están bajo `/api`. Salvo `GET /health`, requieren `Authorization: Bearer <JWT>`.
+Todos los endpoints están bajo `/api`. Salvo `GET /health` y `POST /auth/login`, requieren `Authorization: Bearer <JWT>`.
 
 | Método y ruta | Acceso | Propósito |
 |---|---|---|
 | `GET /api/health` | Público | Comprobación básica de disponibilidad de la API. |
+| `POST /api/auth/login` | Público | Validar CUIL y contraseña, y emitir un JWT. |
 | `GET /api/auth/profile` | JWT válido | Validar token y devolver perfil normalizado. |
 | `GET /api/empleados/me` | JWT válido | Obtener ficha del legajo vinculado al usuario. |
 | `GET /api/empleados?q=texto` | RRHH | Listar y filtrar empleados por nombre/apellido. |
@@ -200,7 +217,9 @@ Las imágenes originales se conservan en `docs/img/`; véanse [docs/CAPTURAS.md]
 
 ### Acceso
 
-![Pantalla de ingreso por token](docs/img/login.png)
+![Formulario de acceso con CUIL y contraseña; los campos se ocultaron en la captura](docs/img/login.png)
+
+La captura de error de acceso también está disponible en [docs/img/login-error.png](docs/img/login-error.png).
 
 ### Portal del empleado
 
@@ -214,7 +233,7 @@ Las imágenes originales se conservan en `docs/img/`; véanse [docs/CAPTURAS.md]
 
 ## Problemas conocidos y límites documentados
 
-- La autenticación depende de un proveedor externo; la aplicación no ofrece alta de usuarios ni recuperación de contraseñas.
+- No hay alta de usuarios ni cambio/restablecimiento de contraseñas desde el portal; la administración de claves requiere la herramienta de backend y una cuenta vinculada.
 - El empleado puede ver su ficha y enviar solicitudes, pero no dispone de una pantalla de historial/estado de sus presentaciones.
 - El Compose actual no empaqueta frontend ni backend y no define una topología de producción.
 - La carga de archivos se guarda en PostgreSQL (`bytea`); conviene evaluar almacenamiento de objetos para un uso de mayor volumen.
@@ -222,7 +241,6 @@ Las imágenes originales se conservan en `docs/img/`; véanse [docs/CAPTURAS.md]
 ## Trabajo futuro (no implementado aún)
 
 - Agregar historial y consulta de estado de solicitudes para el empleado.
-- Realización de Login con usuario y contraseña.
 - Incorporar pruebas de interfaz y pruebas visuales automatizadas.
 - Más funcionalidades, opciones.
 

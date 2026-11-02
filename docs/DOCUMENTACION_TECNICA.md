@@ -2,7 +2,7 @@
 
 ## Alcance
 
-El sistema implementa un portal Angular, una API REST NestJS y persistencia PostgreSQL. La autenticación la delega a un proveedor externo que emite JWT. Esta documentación refleja el código del repositorio; no describe servicios de identidad, infraestructura productiva ni procesos de despliegue que no estén presentes.
+El sistema implementa un portal Angular, una API REST NestJS y persistencia PostgreSQL. El backend autentica cuentas existentes mediante CUIL y contraseña y emite JWT. Esta documentación refleja el código del repositorio; no describe infraestructura productiva ni procesos de despliegue que no estén presentes.
 
 ## Arquitectura
 
@@ -10,7 +10,7 @@ El sistema implementa un portal Angular, una API REST NestJS y persistencia Post
 
 - Aplicación Angular 20 basada en componentes standalone.
 - `AppComponent` organiza el shell autenticado, navegación en memoria por sección, formularios y operaciones.
-- `LoginComponent` solicita un token al usuario y llama `GET /api/auth/profile` para validarlo.
+- `LoginComponent` solicita CUIL y contraseña y llama `POST /api/auth/login`.
 - `AuthService` conserva token y perfil únicamente en memoria.
 - `authInterceptor` agrega el encabezado Bearer a las peticiones HTTP.
 - `MunicipalService` concentra llamadas REST y adapta respuestas del backend a los modelos de vista.
@@ -25,6 +25,8 @@ Hay archivos de guardas Angular, pero la aplicación no configura Router: las se
 - `ValidationPipe` global con `whitelist`, `forbidNonWhitelisted` y `transform`.
 - Autenticación Bearer mediante Passport JWT.
 - Guards de rol para operaciones exclusivas de RRHH.
+- `POST /api/auth/login` verifica el hash de la cuenta activa vinculada al CUIL y emite un JWT.
+- Las contraseñas se guardan con scrypt; los JWT se firman con HS256 (`JWT_SECRET`) o RS256 (par de claves).
 - TypeORM para entidades y transacciones; algunas consultas del esquema municipal se ejecutan con SQL parametrizado.
 - PDFKit para reportes imprimibles.
 - CORS limitado a `CORS_ORIGINS`; en producción la variable es obligatoria.
@@ -37,6 +39,8 @@ PostgreSQL 15. `pps_db.sql` define el esquema preexistente de legajos y relacion
 Los adjuntos se guardan como `bytea` en `archivos`. El contenido de solicitud y valores anteriores se guarda como `jsonb` en `solicitudes`.
 
 ## Diagrama de componentes
+
+El login de la interfaz usa CUIL y contraseña; la aceptación de JWT externos se conserva para clientes de API que ya dispongan de un token.
 
 ```mermaid
 flowchart TB
@@ -56,7 +60,9 @@ flowchart TB
         Client --> Interceptor
     end
     Interceptor -->|Bearer JWT /api| Backend
-    IDP[Emisor externo de JWT] -->|Emite token| Usuario[Usuario]
+    IDP[Emisor externo de JWT para clientes API] -->|Emite token| Usuario[Usuario]
+    Usuario -->|CUIL + contraseña| Login
+    Login -->|POST /api/auth/login| AuthCtl
     Usuario -->|Pega Bearer JWT| Login
     subgraph Backend[NestJS API]
         AuthCtl[AuthController / AuthService]
@@ -109,7 +115,7 @@ La capa de servicio vuelve a validar reglas importantes (p. ej., campos admitido
 
 ### `AuthService`
 
-Normaliza identificador, correo, rol y nombre de usuario desde diferentes nombres de claims. Devuelve únicamente esos campos normalizados en el perfil.
+Autentica con CUIL y contraseña contra cuentas activas vinculadas por `usuarioslegajos`, emite JWT y normaliza identificador, correo, rol y nombre de usuario desde diferentes claims. Devuelve únicamente esos campos normalizados en el perfil.
 
 ### `EmpleadosService`
 
@@ -134,11 +140,12 @@ Usa PDFKit para generar A4, incluye identificador, estado, fechas, datos del leg
 
 ## Controladores y endpoints expuestos
 
-Todos usan prefijo global `/api`. Los endpoints, salvo health, requieren JWT.
+Todos usan prefijo global `/api`. Salvo health y login, requieren JWT.
 
 | Controlador | Método y ruta | Permiso / operación |
 |---|---|---|
 | `AppController` | `GET /api/health` | Público; estado básico de API. |
+| `AuthController` | `POST /api/auth/login` | Público; valida CUIL y contraseña y emite JWT. |
 | `AuthController` | `GET /api/auth/profile` | JWT; devuelve perfil normalizado. |
 | `EmpleadosController` | `GET /api/empleados/me` | JWT; ficha del legajo vinculado. |
 | `EmpleadosController` | `GET /api/empleados?q=...` | RRHH; listado y filtro. |
@@ -174,7 +181,7 @@ Todos usan prefijo global `/api`. Los endpoints, salvo health, requieren JWT.
 
 La entidad TypeORM `Solicitud` mapea `solicitudes`: `id` UUID textual, `empleado_id`, tipo, estado, `cambios`/`valores_anteriores` JSONB, fecha de creación y metadatos de aprobación o rechazo (actor, fecha, observación/motivo). `empleado_id` referencia `empleados(legajo)`. El estado inicial es `pendiente`; el servicio lo transiciona a `aprobada` o `rechazada`.
 
-La relación completa figura en `pps_db.sql` y las migraciones `backend/migrations/001_create_solicitudes.sql` a `004_normalize_catalogos.sql`.
+La relación completa figura en `pps_db.sql` y las migraciones `backend/migrations/001_create_solicitudes.sql` a `005_add_password_hash.sql`.
 
 ## Flujo completo de una solicitud
 
@@ -219,16 +226,38 @@ sequenceDiagram
 
 ## Diagramas de autenticación e interacción
 
-### Login
+### Login con CUIL y contraseña
 
 ```mermaid
 sequenceDiagram
     actor U as Usuario
     participant FE as Angular
     participant API as NestJS
+    participant DB as PostgreSQL
     participant JWT as JwtStrategy
 
-    U->>FE: Pega token externo
+    U->>FE: Ingresa CUIL y contraseña
+    FE->>API: POST /api/auth/login
+    API->>DB: Busca cuenta activa y vínculo al legajo por CUIL
+    DB-->>API: Cuenta, rol y password_hash
+    API->>API: Verifica hash scrypt
+    API->>JWT: Firma JWT HS256 o RS256
+    API-->>FE: access_token y perfil
+    FE->>FE: Conserva token y usuario en memoria
+```
+
+### Validación de JWT existente
+
+La siguiente secuencia corresponde al endpoint de perfil para integraciones o clientes que ya poseen un JWT; el formulario web usa CUIL y contraseña.
+
+```mermaid
+sequenceDiagram
+    actor U as Cliente
+    participant FE as Cliente HTTP
+    participant API as NestJS
+    participant JWT as JwtStrategy
+
+    U->>FE: Envía un JWT existente
     FE->>API: GET /api/auth/profile + Authorization: Bearer
     API->>JWT: Verifica firma y algoritmo permitido
     JWT->>JWT: Exige exp, valida expiración y claims de identidad/rol
@@ -264,11 +293,13 @@ sequenceDiagram
 
 - El servidor acepta tokens Bearer firmados con los algoritmos configurados en `JWT_ALGORITHM`.
 - Se exige `exp`; `JWT_MAX_AGE` limita la antigüedad máxima.
-- `JWT_PUBLIC_KEY` prevalece sobre `JWT_SECRET`; para producción, preferir firma asimétrica y proteger la clave.
+- Para RS256, `JWT_PRIVATE_KEY` firma y `JWT_PUBLIC_KEY` verifica; mantener la clave privada solo en el backend.
+- Las contraseñas se guardan en `usuarios.password_hash` como hashes scrypt con sal aleatoria; la API nunca devuelve el hash.
+- El CUIL debe identificar una cuenta activa única vinculada a un legajo activo mediante `usuarioslegajos`.
 - Se normalizan claims de identidad y rol desde `sub`/`id`/`usuCodigo` y `rol`/`role`/`roles`.
 - El cliente guarda el JWT en memoria, no en `localStorage`; cerrar sesión o recargar la pestaña lo descarta.
-- El endpoint de perfil valida una credencial ya emitida: no es un servicio de login/creación de JWT.
-- La estrategia admite un claim de rol ausente; la interfaz clasifica como empleado cualquier rol que no identifique RRHH. Las acciones de RRHH sí tienen `RolesGuard`, mientras que ficha propia/creación dependen del vínculo activo usuario-legajo. El proveedor debe emitir claims de rol coherentes con la política institucional.
+- `GET /api/auth/profile` valida una credencial ya emitida y devuelve el perfil normalizado.
+- Las cuentas locales requieren un rol `1`/RRHH o `2`/Empleado para iniciar sesión. Los tokens heredados pueden omitir el rol, pero no obtienen acceso a las operaciones de RRHH.
 
 ### Autorización
 

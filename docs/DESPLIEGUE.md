@@ -2,9 +2,9 @@
 
 ## Introducción
 
-Este documento describe cómo preparar y ejecutar el sistema de autogestión de datos de la Municipalidad de Concordia desde el código del repositorio. La modalidad actualmente configurada es de desarrollo: Docker Compose ejecuta PostgreSQL y pgAdmin, mientras que API y frontend se ejecutan con Node.js/npm en el host.
+Este documento describe cómo preparar y ejecutar el sistema de autogestión de datos de la Municipalidad de Concordia desde el código del repositorio. El entorno local usa Docker Compose para PostgreSQL y pgAdmin, y Node.js/npm para API y frontend. El repositorio también incluye un Blueprint de Render para preparar una publicación temporal; agregar esa configuración no significa que la aplicación ya esté desplegada ni que tenga una URL pública.
 
-No hay `Dockerfile` para la API o el portal ni servicios de aplicación en `docker-compose.yml`; por ello, el despliegue integral de producción requiere definir esa infraestructura por separado.
+No hay `Dockerfile` para la API o el portal ni servicios de aplicación en `docker-compose.yml`; Render compila ambos servicios directamente desde sus directorios.
 
 ## Requisitos de hardware
 
@@ -58,8 +58,15 @@ La primera inicialización de `postgres_data` ejecuta, en este orden:
 3. `backend/migrations/002_seed_catalogos.sql`: catálogos iniciales.
 4. `backend/migrations/003_add_rejection_details.sql`: datos de rechazo.
 5. `backend/migrations/004_normalize_catalogos.sql`: elimina acentos y consolida funciones/parentescos duplicados conservando sus referencias.
+6. `backend/migrations/005_add_password_hash.sql`: agrega el hash de contraseña a las cuentas.
 
-La imagen oficial ejecuta scripts de `/docker-entrypoint-initdb.d` solamente cuando inicializa un directorio de datos vacío. Si el volumen ya existe, actualizar los archivos SQL no vuelve a ejecutar las migraciones. Para una base existente, realizar copia de seguridad y aplicar manualmente cada migración pendiente con `psql` en el orden indicado, incluida `004_normalize_catalogos.sql` para normalizar datos ya cargados; no eliminar el volumen como método de actualización.
+La imagen oficial ejecuta scripts de `/docker-entrypoint-initdb.d` solamente cuando inicializa un directorio de datos vacío. Si el volumen ya existe, actualizar los archivos SQL no vuelve a ejecutar las migraciones. Para una base existente, realizar copia de seguridad y aplicar manualmente cada migración pendiente con `psql` en el orden indicado, incluida `004_normalize_catalogos.sql` para normalizar datos ya cargados y `005_add_password_hash.sql` para habilitar el login; no eliminar el volumen como método de actualización.
+
+Para aplicar esta migración en el PostgreSQL de Compose desde PowerShell, una vez hecha la copia de seguridad:
+
+```powershell
+Get-Content backend/migrations/005_add_password_hash.sql | docker compose exec -T postgres psql -U pps_user -d pps_db
+```
 
 Para conectarse desde pgAdmin, crear un servidor con host `postgres`, puerto `5432`, base `pps_db`, usuario `pps_user` y la contraseña definida en `docker-compose.yml`. Desde el host, el host de base de datos es `localhost`.
 
@@ -69,7 +76,7 @@ Para conectarse desde pgAdmin, crear un servidor con host `postgres`, puerto `54
 
 1. Crear la base `pps_db` y un usuario con permisos sobre ella.
 2. Cargar `pps_db.sql`.
-3. Aplicar una sola vez, en orden, las migraciones `backend/migrations/001...` a `004...`.
+3. Aplicar una sola vez, en orden, las migraciones `backend/migrations/001...` a `005...`.
 4. Configurar `DB_HOST`, `DB_PORT`, `DB_USERNAME`, `DB_PASSWORD` y `DB_NAME` en el entorno de la API.
 5. Confirmar conectividad desde el host donde se ejecutará NestJS.
 
@@ -98,15 +105,17 @@ JSON_BODY_LIMIT=8mb
 | `PORT` | Puerto de escucha de NestJS; predeterminado `3000`. |
 | `DB_HOST`, `DB_PORT`, `DB_USERNAME`, `DB_PASSWORD`, `DB_NAME` | Parámetros de PostgreSQL. En modo producción se exigen host, usuario, contraseña y nombre. |
 | `JWT_PUBLIC_KEY` | Clave pública para validar JWT asimétricos. Si se configura, prevalece sobre `JWT_SECRET`; los saltos de línea escapados (`\n`) se normalizan. |
-| `JWT_SECRET` | Secreto compartido para validar JWT HMAC, normalmente HS256. |
+| `JWT_PRIVATE_KEY` | Clave privada correspondiente a `JWT_PUBLIC_KEY`, necesaria para firmar tokens de login RS256. |
+| `JWT_SECRET` | Secreto compartido para firmar y validar JWT HS256. Necesario para login local cuando no se usa un par RS256. |
 | `JWT_ALGORITHM` | Lista separada por comas de algoritmos aceptados. Predeterminado `RS256` si hay clave pública o `HS256` si hay secreto. Alinear con el proveedor. |
 | `JWT_MAX_AGE` | Antigüedad máxima admitida; predeterminada `1h`. Se exige además el claim `exp`. |
 | `CORS_ORIGINS` | Lista de orígenes permitidos, separada por comas. Obligatoria cuando `NODE_ENV=production`; el valor predeterminado de desarrollo admite localhost:4200. |
+| `DB_SSL` | Si vale `true`, activa TLS para PostgreSQL. Se usa al conectar desde una herramienta local a la URL externa de Render; la API alojada utiliza la conexión interna de la misma región. |
 | `JSON_BODY_LIMIT` | Límite de cuerpo JSON; predeterminado `8mb`. |
 | `NODE_ENV` | Al establecer `production`, se aplican las comprobaciones de configuración productiva. |
 | `PGADMIN_DEFAULT_EMAIL`, `PGADMIN_DEFAULT_PASSWORD` | Credenciales de pgAdmin interpretadas por Docker Compose; se usan defaults locales en el YAML. |
 
-Para producción, preferir una clave pública (`JWT_PUBLIC_KEY`) en vez de compartir el secreto del emisor. Gestionar los secretos en el entorno del despliegue, no en Git ni en el frontend. El script de token de prueba solo acepta `JWT_SECRET`.
+Para producción, usar el par RS256: `JWT_PUBLIC_KEY` para verificar y `JWT_PRIVATE_KEY` para firmar los tokens del login. Gestionar los secretos en el entorno del despliegue, no en Git ni en el frontend. El script de token de prueba solo acepta `JWT_SECRET`.
 
 ## Backend
 
@@ -117,6 +126,45 @@ Desde `backend/`:
 ```powershell
 npm ci
 ```
+
+### Habilitar cuentas existentes
+
+Después de aplicar la migración `005_add_password_hash.sql`, asignar una contraseña a cada cuenta activa:
+
+```powershell
+npm run auth:set-password
+```
+
+El comando solicita CUIL y contraseña (mínimo 12 caracteres) sin mostrar esta última y almacena un hash scrypt en `usuarios.password_hash`. Solo procede si existe exactamente una cuenta activa, con vínculo activo en `usuarioslegajos`, para un empleado activo con ese CUIL. Antes de habilitar una cuenta RRHH, asociarla al legajo correcto; no se crean asociaciones automáticamente.
+
+Para cambiar una contraseña existente, se puede volver a ejecutar el comando para el mismo CUIL; el hash anterior se reemplaza. Usar contraseñas únicas y no copiarlas a documentación, capturas, scripts ni al repositorio.
+
+`pps_db.sql` se utiliza como carga inicial; no incorpora automáticamente los cambios hechos luego en pgAdmin. No hace falta exportarlo de nuevo para conservar la base local existente. En una instalación nueva, aplicar las migraciones y repetir únicamente los vínculos/datos de prueba necesarios; provisionar las contraseñas de forma local con el comando anterior.
+
+Para comprobar qué cuentas activas tienen vínculo y contraseña configurada, sin exponer el hash, se puede usar en pgAdmin:
+
+```sql
+SELECT u.usucodigo, u.apenom, r.descripcion AS rol, ul.legajo,
+       (u.password_hash IS NOT NULL) AS password_configurada
+FROM public.usuarios u
+JOIN public.roles r ON r.idrol = u.idrol
+JOIN public.usuarioslegajos ul ON ul.usucodigo = u.usucodigo
+WHERE u.estado = 'AC' AND ul.estado = 'AC'
+ORDER BY u.usucodigo;
+```
+
+Los roles de la base son `1 = RRHH` y `2 = empleado`. Evitar registrar aquí CUIL o contraseñas reales.
+
+### Preparar accesos para evaluación
+
+La aplicación admite los perfiles Empleado y RRHH. Para que otra persona pueda probarlos:
+
+1. Preparar en la base de evaluación un legajo ficticio activo con CUIL para Empleado y una cuenta activa con `idrol = 2`, vinculada a ese legajo en `usuarioslegajos`.
+2. Preparar otra cuenta activa con `idrol = 1`, vinculada a un legajo activo con un CUIL único. No vincular ambos usuarios al mismo CUIL: el login exige que cada CUIL resuelva una sola cuenta activa.
+3. Ejecutar `npm run auth:set-password` una vez por cada CUIL y configurar contraseñas temporales, únicas y distintas.
+4. Entregar al evaluador la URL de la aplicación y las dos combinaciones de CUIL/contraseña por un canal privado separado del repositorio. Cambiar esas claves al terminar la evaluación o si se divulgaron.
+
+El evaluador debe contar también con el entorno iniciado y configurado según esta guía. `pps_db.sql` sirve como base inicial y no contiene automáticamente los cambios hechos luego desde pgAdmin; una instalación nueva requiere reproducir allí los datos/vínculos de evaluación y asignar sus contraseñas.
 
 ### Compilar
 
@@ -145,9 +193,9 @@ npm run start:prod
 
 ![Backend ejecutándose](img/backend-corriendo.png)
 
-### JWT de prueba (solo entorno local)
+### Login con CUIL y contraseña
 
-Con `JWT_SECRET` en `backend/.env` y una base con los registros que correspondan:
+El login de la interfaz usa `POST /api/auth/login`. El usuario ingresa el CUIL del legajo y la contraseña previamente asignada con `npm run auth:set-password`. Para utilizar herramientas de prueba de API, también se conservan los generadores JWT locales:
 
 ```powershell
 npm run token:rrhh
@@ -155,7 +203,7 @@ npm run token:empleado
 npm run token:ana
 ```
 
-Copiar el token generado al formulario de acceso. El script emite JWT HS256 de una hora, no funciona con `NODE_ENV=production` ni con solo `JWT_PUBLIC_KEY`. No usar estos tokens fuera de desarrollo.
+Los tokens generados son HS256, no funcionan con `NODE_ENV=production` ni con solo `JWT_PUBLIC_KEY`, y no deben usarse fuera de desarrollo.
 
 ## Frontend
 
@@ -205,7 +253,73 @@ docker compose logs -f postgres
 
 Compose obtiene `postgres:15` y `dpage/pgadmin4` desde sus imágenes declaradas. No hay `Dockerfile` de la aplicación ni servicios que ejecutar con `docker compose build`; por tanto, el portal y la API se compilan con npm en el host.
 
-### Despliegue disponible
+### Render para una evaluación temporal
+
+La configuración [render.yaml](../render.yaml) define tres recursos: una API NestJS gratuita, un sitio estático Angular gratuito y una base PostgreSQL gratuita, todos en Ohio. El sitio reescribe `/api/*` hacia la API pública y CORS admite el origen del frontend. El Blueprint genera `JWT_SECRET` y obtiene las credenciales de DB desde Render; no guarda secretos en Git.
+
+Esta opción es solo para evaluación, no para producción. Según las limitaciones vigentes de Render, la API gratuita se suspende tras 15 minutos sin tráfico y puede tardar alrededor de un minuto en volver; la base gratuita tiene 1 GB y expira a los 30 días. Revisar el plan y los límites de uso que muestra el Dashboard antes de confirmar la creación. [Documentación oficial de planes gratuitos](https://render.com/docs/free).
+
+#### Publicar los servicios
+
+1. Subir el repositorio a GitHub y crear/iniciar sesión en una cuenta de Render.
+2. En Render, elegir **New > Blueprint**, conectar el repositorio y seleccionar la rama que contiene `render.yaml`.
+3. Revisar que los tres recursos aparezcan con plan `Free` y confirmar la creación. La primera compilación crea el portal y la API; la base queda vacía hasta importar el esquema y los datos.
+4. Si Render indica que alguno de los nombres ya está ocupado, cambiar el nombre del recurso en `render.yaml`. Si cambia el nombre del frontend, actualizar también `CORS_ORIGINS`; si cambia el del backend, actualizar el destino del rewrite; si cambia el de la base, actualizar todos los `fromDatabase.name`. Volver a sincronizar el Blueprint.
+5. Esperar que PostgreSQL figure disponible. En su Dashboard, abrir **Connect** y copiar los datos de conexión **External**. Para una carga desde la computadora, se necesita `psql` instalado y accesible en PowerShell; el Query Tool de pgAdmin no es compatible con los bloques `COPY FROM stdin` del dump.
+
+#### Cargar una base de demostración
+
+`pps_db.sql` es una carga inicial, no un respaldo actualizado de pgAdmin. No incluye los CUIL, vínculos ni contraseñas que se hayan agregado localmente después. Para una aplicación pública, usar solo datos ficticios y revisar/sanitizar el dataset antes de importarlo; no publicar datos personales municipales reales.
+
+El dump ya no fuerza el propietario local `pps_user`, así que los objetos se crean bajo el usuario de la conexión de destino. Desde la raíz del repositorio, reemplazar los valores entre `<...>` con los datos **External** de Render y ejecutar:
+
+```powershell
+$securePassword = Read-Host "Contraseña externa de PostgreSQL" -AsSecureString
+$env:PGPASSWORD = [System.Net.NetworkCredential]::new("", $securePassword).Password
+try {
+    psql "host=<HOST> port=5432 dbname=pps_db user=pps_user sslmode=require" `
+      -v ON_ERROR_STOP=1 `
+      -f .\pps_db.sql `
+      -f .\backend\migrations\001_create_solicitudes.sql `
+      -f .\backend\migrations\002_seed_catalogos.sql `
+      -f .\backend\migrations\003_add_rejection_details.sql `
+      -f .\backend\migrations\004_normalize_catalogos.sql `
+      -f .\backend\migrations\005_add_password_hash.sql
+}
+finally {
+    Remove-Item Env:PGPASSWORD
+}
+```
+
+La importación solo se hace una vez en una base vacía. Luego, crear los dos usuarios ficticios de evaluación: uno con `idrol = 2` (Empleado) y otro con `idrol = 1` (RRHH), con CUIL único, legajo activo y vínculo activo en `usuarioslegajos`. Los roles y asociaciones no se deducen del CUIL. No reutilizar credenciales publicadas en chats o documentación.
+
+Para asignar contraseñas desde el equipo local, abrir `backend/` e indicar las credenciales externas de la base en variables de entorno. El script usa TLS si `DB_SSL=true`:
+
+```powershell
+$env:DB_HOST = "<HOST>"
+$env:DB_PORT = "5432"
+$env:DB_USERNAME = "pps_user"
+$env:DB_NAME = "pps_db"
+$env:DB_SSL = "true"
+$securePassword = Read-Host "Contraseña externa de PostgreSQL" -AsSecureString
+$env:DB_PASSWORD = [System.Net.NetworkCredential]::new("", $securePassword).Password
+try {
+    npm run auth:set-password
+}
+finally {
+    Remove-Item Env:DB_HOST, Env:DB_PORT, Env:DB_USERNAME, Env:DB_NAME, Env:DB_SSL, Env:DB_PASSWORD
+}
+```
+
+Repetir el comando por cada CUIL ficticio. `auth:set-password` oculta la contraseña durante el ingreso y guarda un hash scrypt. No guardar la contraseña de PostgreSQL ni las claves de prueba en el repositorio.
+
+#### Compartir el acceso
+
+Una vez que los servicios estén desplegados, la URL pública es la que Render muestra para el sitio `pps-autogestion-web` (formato `https://<nombre>.onrender.com`). Probar ambos perfiles, una solicitud de punta a punta y el PDF. Compartir la URL junto con los CUIL y contraseñas temporales por un canal privado aparte del repositorio; rotarlas al finalizar la evaluación.
+
+La URL no se puede generar desde el repositorio: la dueña del proyecto debe autorizar GitHub y crear/confirmar los recursos en su cuenta Render. La publicación todavía requiere completar esos pasos y verificar la aplicación desplegada.
+
+### Despliegue local disponible
 
 La puesta en marcha local completa combina los contenedores de base de datos con dos procesos npm:
 
@@ -215,7 +329,7 @@ La puesta en marcha local completa combina los contenedores de base de datos con
 4. En otra terminal, ejecutar `cd frontend; npm ci; npm start`.
 5. Abrir `http://localhost:4200`.
 
-Para producción, además de compilar, faltan en este repositorio las imágenes de aplicación, servidor web para el artefacto Angular, proxy/TLS, administración de secretos, estrategia de migraciones y política de backup/restore. No asumir que el Compose actual despliega esos elementos.
+Para una instalación productiva, siguen pendientes una estrategia de migraciones automatizadas, backups/restauración y elección de planes de servicio apropiados. El Blueprint gratuito es únicamente un punto de partida para evaluación.
 
 ## Verificación
 
@@ -227,7 +341,7 @@ Para producción, además de compilar, faltan en este repositorio las imágenes 
    ```
 
 3. Comprobar portal: abrir `http://localhost:4200`; debe aparecer la pantalla de ingreso.
-4. Probar un JWT válido y verificar la ficha o panel correspondiente al rol.
+4. Probar el login con un CUIL activo y su contraseña asignada; verificar la ficha o panel correspondiente al rol.
 5. Para una prueba funcional completa, crear una solicitud como empleado, comprobar su aparición en la bandeja de RRHH, aprobarla o rechazarla y generar un PDF.
 6. Los scripts de validación disponibles en backend son:
 
@@ -246,8 +360,9 @@ Para producción, además de compilar, faltan en este repositorio las imágenes 
 |---|---|---|
 | API no conecta con PostgreSQL | Base detenida, credenciales incorrectas o `DB_HOST` inadecuado. | Revisar `docker compose ps`, logs del servicio y variables; para backend ejecutado en host, usar `DB_HOST=localhost`. |
 | Cambios SQL no aparecen en la base | El volumen ya estaba inicializado. | Revisar historial/manualidad de migraciones y aplicar las pendientes de forma controlada. Los init scripts no se reejecutan automáticamente. |
-| Error por variable JWT ausente | No se configuró la clave/secreto. | Definir `JWT_PUBLIC_KEY` o `JWT_SECRET` en el entorno del backend. |
-| Token rechazado | Firma, expiración, algoritmo, antigüedad o claims incompatibles. | Confirmar `exp`, `sub`/`id`/`usuCodigo`, rol, `JWT_ALGORITHM`, `JWT_MAX_AGE` y la clave del emisor. |
+| Error por variable JWT ausente | No se configuró la clave/secreto. | Definir `JWT_SECRET` para HS256 o `JWT_PUBLIC_KEY` y `JWT_PRIVATE_KEY` para RS256. |
+| Login rechazado | CUIL/contraseña incorrectos, cuenta inactiva, CUIL sin legajo o más de una cuenta activa vinculada. | Revisar estado y vínculo en `usuarioslegajos`, verificar el CUIL del empleado y asignar una clave con `npm run auth:set-password`. |
+| JWT rechazado | Firma, expiración, algoritmo, antigüedad o claims incompatibles. | Confirmar `exp`, `sub`/`id`/`usuCodigo`, rol, `JWT_ALGORITHM`, `JWT_MAX_AGE` y el secreto o par de claves configurado. |
 | CORS bloquea llamadas en producción | Falta `CORS_ORIGINS` o el origen no coincide exactamente. | Configurar los orígenes del frontend sin rutas y reiniciar la API. |
 | Frontend muestra error de conexión | API detenida o no accesible en el destino del proxy. | Confirmar API en el puerto 3000 y revisar `frontend/src/proxy.conf.json`. |
 | No se puede iniciar Docker por puerto ocupado | Otro proceso usa 5432 o 8080. | Detener/reconfigurar el proceso conflictivo o cambiar el mapeo local de puerto y ajustar la conexión. |

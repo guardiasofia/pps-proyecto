@@ -1,0 +1,58 @@
+services:
+  - type: web
+    name: pps-autogestion-api
+    runtime: node
+    plan: free
+    region: ohio
+    rootDir: backend
+    buildCommand: npm ci && npm run build
+    startCommand: npm run start:prod
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DB_HOST
+        fromDatabase:
+          name: pps-autogestion-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: pps-autogestion-db
+          property: port
+      - key: DB_USERNAME
+        fromDatabase:
+          name: pps-autogestion-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: pps-autogestion-db
+          property: password
+      - key: DB_NAME
+        fromDatabase:
+          name: pps-autogestion-db
+          property: database
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_MAX_AGE
+        value: 1h
+      - key: CORS_ORIGINS
+        value: https://pps-autogestion-web.onrender.com
+
+  - type: web
+    name: pps-autogestion-web
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist/concordia-municipalidad-front/browser
+    routes:
+      - type: rewrite
+        source: /api/*
+        destination: https://pps-autogestion-api.onrender.com/api/*
+
+databases:
+  - name: pps-autogestion-db
+    databaseName: pps_db
+    user: pps_user
+    plan: free
+    region: ohio
+    postgresMajorVersion: "15"
+    diskSizeGB: 1

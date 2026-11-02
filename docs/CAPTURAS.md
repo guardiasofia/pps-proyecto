@@ -6,7 +6,8 @@ Las imágenes siguientes se copiaron desde los adjuntos recibidos a `docs/img/`.
 
 | Archivo | Título | Descripción | Ubicación recomendada |
 |---|---|---|---|
-| `img/login.png` | Ingreso al sistema | Formulario para validar un token de acceso externo. | README, Manual de usuario → Acceso al sistema. |
+| `img/login.png` | Ingreso al sistema | Formulario actual de CUIL y contraseña, con los campos vacíos para no revelar credenciales. | README, Manual de usuario → Acceso al sistema. |
+| `img/login-error.png` | Acceso rechazado | Mensaje genérico de error con los campos de ingreso ocultos. | Manual de usuario → Acceso al sistema. |
 | `img/inicio-empleado.png` | Inicio del portal del empleado | Inicio con bienvenida, botón Nueva solicitud y aviso sobre presentaciones pendientes. | README, Manual → Navegación principal / Empleado. |
 | `img/ficha-empleado.png` | Ficha personal y cuenta vinculada | Datos de ficha, cuenta, contacto y familiares registrados. | Manual → Navegación principal / Empleado. |
 | `img/resumen-rrhh.png` | Resumen de gestión de RRHH | Indicadores, últimas solicitudes y distribución del personal por repartición. | README, Manual → Navegación principal / Recursos Humanos. |
@@ -31,15 +32,13 @@ Las imágenes siguientes se copiaron desde los adjuntos recibidos a `docs/img/`.
 
 ### Datos de las capturas
 
-Los nombres, correos, legajos, fechas, identificadores y motivos visibles en las capturas del sistema son ficticios, inventados para demostración y no corresponden a personas reales. Se conservaron las imágenes originales; únicamente se cubrió la ruta local que identificaba al usuario del equipo en `img/frontend-corriendo.png`. Las capturas que mostraban JWT completos se excluyeron porque los tokens son credenciales.
+Las capturas actuales del login se recortaron para quitar la barra del navegador y se vaciaron los campos de usuario y contraseña antes de incorporarlas. La captura de la consola usada para asignar contraseñas no se publicó porque mostraba un CUIL. No incluir en el repositorio CUIL reales, contraseñas, hashes ni tokens; las credenciales de prueba que se hayan divulgado deben cambiarse.
 
 ## Capturas sugeridas, todavía no disponibles
 
 | Nombre sugerido | Título | Qué debería mostrar | Sección |
 |---|---|---|---|
 | `img/validacion-formulario.png` | Validación de formulario | Mensaje al ingresar datos inválidos o adjuntar un archivo no admitido. | Manual → Validaciones y mensajes. |
-
-Para ilustrar el cierre de sesión puede volver a capturarse `img/login.png` inmediatamente después de seleccionar **Salir**.
 
 ## Diagramas Mermaid
 

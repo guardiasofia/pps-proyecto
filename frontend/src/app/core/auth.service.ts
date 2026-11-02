@@ -1,9 +1,9 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { map, tap } from 'rxjs';
+import { tap } from 'rxjs';
 
 export interface AuthUser {
-  id: number | null;
+  id: string | number | null;
   email: string | null;
   username: string | null;
   rol: number | string | null;
@@ -16,12 +16,11 @@ export class AuthService {
   private user: AuthUser | null = null;
   private authorized = false;
 
-  login(token: string) {
-    const accessToken = token.trim();
-    return this.http.get<{ user: AuthUser }>('/api/auth/profile', {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    }).pipe(
-      map((response) => ({ access_token: accessToken, user: response.user })),
+  login(cuil: string, password: string) {
+    return this.http.post<{ access_token: string; user: AuthUser }>(
+      '/api/auth/login',
+      { cuil: cuil.trim(), password },
+    ).pipe(
       tap((response) => {
         this.accessToken = response.access_token;
         this.user = response.user;

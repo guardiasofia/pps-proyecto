@@ -4,22 +4,22 @@
 
 El portal permite al personal municipal consultar los datos asociados a su legajo y presentar una solicitud de actualización. Recursos Humanos dispone de un panel para consultar personal, revisar cambios, resolver solicitudes y generar reportes PDF.
 
-La aplicación usa un token emitido por un proveedor de identidad externo. No se crea una contraseña desde este portal.
+El acceso se realiza con el CUIL del legajo y la contraseña que haya asignado el administrador a la cuenta.
 
 ## Acceso al sistema
 
 1. Abrir la dirección web comunicada por el administrador.
-2. Solicitar al proveedor de identidad institucional un token vigente.
-3. Pegar el token en el campo **Token de acceso externo** y seleccionar **Validar token**.
-4. Si el token es válido, se abre el inicio correspondiente al rol. Si no lo es o expiró, solicitar uno vigente.
+2. Ingresar el **CUIL** del legajo y la **contraseña** asignada.
+3. Seleccionar **Ingresar**. Si la cuenta está activa y vinculada al legajo, se abre la pantalla correspondiente a su rol.
 
-La captura existente muestra el formulario de ingreso con el campo para pegar el token.
+La contraseña inicial debe solicitarse al administrador. El CUIL se puede ingresar con o sin guiones, puntos o espacios; el portal comprueba que tenga 11 dígitos, pero no verifica su dígito de control ni la identidad real. El perfil muestra el nombre y apellido configurados en la cuenta vinculada. Si el nombre aparece incompleto o no coincide, pedir al administrador que revise `usuarios.usunombre` y `usuarios.apenom`.
 
-**Captura sugerida:** `docs/img/login.png`<br>
-**Qué muestra:** pantalla de acceso y validación de un token externo.<br>
-**Flujo:** obtener token → pegarlo → validarlo → acceder al portal según el rol.
 
-![Pantalla de ingreso](img/login.png)
+![Formulario vigente de acceso; los campos están vacíos para proteger las credenciales](img/login.png)
+
+Si la cuenta no está habilitada o los datos no coinciden, se muestra un mensaje genérico:
+
+![Mensaje de acceso rechazado con los campos ocultos](img/login-error.png)
 
 ## Navegación principal
 
@@ -175,7 +175,7 @@ La imagen `docs/img/reporte-solicitud.png` es una página de ejemplo del PDF emi
 
 ## Validaciones y mensajes
 
-- Un token ausente, inválido o expirado impide acceder.
+- Un CUIL o contraseña incorrectos, o una cuenta sin vínculo activo, impiden acceder.
 - El rol RRHH es necesario para directorio, detalle/listado de solicitudes, resolución y PDF.
 - Para crear solicitudes, la identidad debe asociarse a un legajo activo.
 - No se pueden enviar solicitudes sin cambios ni campos ajenos a la lista permitida.
@@ -202,10 +202,6 @@ La imagen `docs/img/reporte-solicitud.png` es una página de ejemplo del PDF emi
 ## Cierre de sesión
 
 Seleccionar **Salir**, en la barra superior. Se borra el token de la memoria de la aplicación y se vuelve al formulario de acceso. La sesión también se pierde al recargar la pestaña porque el token no se guarda en almacenamiento persistente del navegador.
-
-**Captura sugerida:** `docs/img/login.png` (puede volver a capturarse luego de seleccionar Salir para documentar el resultado del flujo).<br>
-**Qué muestra:** pantalla de ingreso que queda disponible luego de cerrar la sesión.<br>
-**Flujo:** seleccionar Salir → confirmar que reaparece el formulario → comprobar que el token anterior ya no habilita la sesión.
 
 ## Nota sobre capturas
 
